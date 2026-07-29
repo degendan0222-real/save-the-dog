@@ -2,149 +2,264 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>Save the Doge</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body {
-      width: 100%;
-      height: 100%;
+      width: 100%; height: 100%;
       overflow: hidden;
       background: #1a1a2e;
       touch-action: none;
       -webkit-user-select: none;
       user-select: none;
+      -webkit-touch-callout: none;
+      position: fixed;
     }
     canvas {
       display: block;
-      width: 100%;
-      height: 100%;
-      background: #87CEEB;
+      width: 100%; height: 100%;
       touch-action: none;
     }
     #ui {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
+      position: absolute; top: 0; left: 0;
+      width: 100%; height: 100%;
       pointer-events: none;
     }
+    #hud {
+      position: absolute; top: 0; left: 0;
+      width: 100%;
+      padding: 8px 12px;
+      display: none;
+      justify-content: space-between;
+      align-items: flex-start;
+      pointer-events: none;
+      z-index: 5;
+    }
+    .hud-left, .hud-right {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .hud-center {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    #lives { font-size: 18px; line-height: 1.2; }
+    #level {
+      font-family: 'Arial Black', Arial, sans-serif;
+      font-size: 14px;
+      color: white;
+      text-shadow: 1px 1px 3px rgba(0,0,0,0.6);
+    }
+    #score {
+      font-family: 'Arial Black', Arial, sans-serif;
+      font-size: 14px;
+      color: white;
+      text-shadow: 1px 1px 3px rgba(0,0,0,0.6);
+    }
     #timer {
+      font-family: 'Arial Black', Arial, sans-serif;
+      font-size: 32px;
+      color: white;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+    }
+    #timer-label {
+      font-family: Arial, sans-serif;
+      font-size: 10px;
+      color: rgba(255,255,255,0.7);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    #ink-container {
       position: absolute;
-      top: 15px;
+      bottom: 70px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 200px;
+      height: 16px;
+      background: rgba(0,0,0,0.3);
+      border-radius: 10px;
+      border: 2px solid rgba(255,255,255,0.4);
+      overflow: hidden;
+      pointer-events: none;
+      z-index: 5;
+      display: none;
+    }
+    #ink-fill {
+      height: 100%;
+      width: 100%;
+      background: linear-gradient(90deg, #8B4513, #D2691E);
+      border-radius: 8px;
+      transition: width 0.1s;
+    }
+    #ink-label {
+      position: absolute;
+      top: -14px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: Arial, sans-serif;
+      font-size: 9px;
+      color: rgba(255,255,255,0.6);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      white-space: nowrap;
+    }
+    #draw-hint {
+      position: absolute;
+      bottom: 100px;
       left: 50%;
       transform: translateX(-50%);
       font-family: 'Arial Black', Arial, sans-serif;
-      font-size: 28px;
+      font-size: 16px;
       color: white;
-      text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
-      font-weight: bold;
-    }
-    #score {
-      position: absolute;
-      top: 15px;
-      right: 20px;
-      font-family: 'Arial Black', Arial, sans-serif;
-      font-size: 20px;
-      color: white;
-      text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.7);
+      text-align: center;
+      pointer-events: none;
+      z-index: 5;
+      background: rgba(0,0,0,0.3);
+      padding: 8px 20px;
+      border-radius: 20px;
+      white-space: nowrap;
     }
     #message {
       position: absolute;
-      top: 50%;
-      left: 50%;
+      top: 50%; left: 50%;
       transform: translate(-50%, -50%);
       font-family: 'Arial Black', Arial, sans-serif;
-      font-size: 48px;
+      font-size: 28px;
       color: white;
-      text-shadow: 3px 3px 6px rgba(0,0,0,0.7);
+      text-shadow: 3px 3px 8px rgba(0,0,0,0.8);
       text-align: center;
       opacity: 0;
       transition: opacity 0.3s;
+      pointer-events: none;
+      z-index: 20;
+      line-height: 1.5;
+      white-space: pre-line;
     }
     #message.show { opacity: 1; }
     #restart-btn {
       position: absolute;
-      top: 60%;
-      left: 50%;
+      top: 62%; left: 50%;
       transform: translateX(-50%);
-      padding: 16px 48px;
-      font-size: 24px;
+      padding: 14px 40px;
+      font-size: 20px;
       font-family: 'Arial Black', Arial, sans-serif;
-      background: #FFD700;
+      background: linear-gradient(135deg, #FFD700, #FFA000);
       color: #333;
       border: none;
       border-radius: 12px;
       cursor: pointer;
       pointer-events: auto;
       display: none;
+      z-index: 25;
       box-shadow: 0 4px 15px rgba(0,0,0,0.3);
     }
     #start-btn {
       position: absolute;
-      top: 50%;
-      left: 50%;
+      top: 56%; left: 50%;
       transform: translate(-50%, -50%);
-      padding: 20px 60px;
-      font-size: 28px;
+      padding: 18px 50px;
+      font-size: 24px;
       font-family: 'Arial Black', Arial, sans-serif;
-      background: #FFD700;
+      background: linear-gradient(135deg, #FFD700, #FFA000);
       color: #333;
       border: none;
       border-radius: 16px;
       cursor: pointer;
       pointer-events: auto;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
       z-index: 10;
+      box-shadow: 0 6px 25px rgba(0,0,0,0.4);
     }
     #start-title {
       position: absolute;
-      top: 35%;
-      left: 50%;
+      top: 32%; left: 50%;
       transform: translate(-50%, -50%);
       font-family: 'Arial Black', Arial, sans-serif;
-      font-size: 36px;
+      font-size: 42px;
       color: white;
-      text-shadow: 3px 3px 6px rgba(0,0,0,0.7);
+      text-shadow: 3px 3px 8px rgba(0,0,0,0.7);
       text-align: center;
       z-index: 10;
       white-space: nowrap;
     }
     #start-sub {
       position: absolute;
-      top: 43%;
-      left: 50%;
+      top: 42%; left: 50%;
       transform: translateX(-50%);
       font-family: Arial, sans-serif;
       font-size: 16px;
-      color: rgba(255,255,255,0.8);
+      color: rgba(255,255,255,0.85);
       text-align: center;
       z-index: 10;
+      background: rgba(0,0,0,0.2);
+      padding: 8px 16px;
+      border-radius: 10px;
     }
-    #lives {
+    #final-score {
       position: absolute;
-      top: 15px;
-      left: 20px;
-      font-family: 'Arial Black', Arial, sans-serif;
-      font-size: 22px;
-      color: #FF6B6B;
-      text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      font-family: Arial, sans-serif;
+      font-size: 18px;
+      color: rgba(255,255,255,0.9);
+      text-align: center;
+      z-index: 20;
+      display: none;
+      margin-top: 40px;
+      white-space: pre-line;
+      line-height: 1.6;
+    }
+    #dog-icon {
+      font-size: 60px;
+      display: block;
+      margin-bottom: 5px;
+    }
+    #ink-container.show { display: block; }
+    @media (max-width: 400px) {
+      #start-title { font-size: 32px; top: 30%; }
+      #start-sub { font-size: 14px; top: 40%; }
+      #start-btn { padding: 14px 40px; font-size: 20px; }
+      #timer { font-size: 26px; }
+      #message { font-size: 22px; }
+      #ink-container { width: 160px; }
     }
   </style>
 </head>
 <body>
   <canvas id="game"></canvas>
   <div id="ui">
-    <div id="start-title">🐕 Save the Doge</div>
-    <div id="start-sub">Draw lines to protect the dog from bees!</div>
-    <button id="start-btn">Play Now</button>
-    <div id="lives"></div>
-    <div id="timer">10</div>
-    <div id="score">🐝 0</div>
+    <div id="start-title"><span id="dog-icon">🐕</span>Save the Doge</div>
+    <div id="start-sub">Draw a line to protect the dog from bees!</div>
+    <button id="start-btn">▶ Play</button>
+
+    <div id="hud">
+      <div class="hud-left">
+        <div id="lives">❤️❤️❤️</div>
+        <div id="level">Level 1</div>
+      </div>
+      <div class="hud-center">
+        <div id="timer-label">TIME</div>
+        <div id="timer">10</div>
+      </div>
+      <div class="hud-right">
+        <div id="score">🐝 0</div>
+      </div>
+    </div>
+
+    <div id="ink-container">
+      <div id="ink-label">INK</div>
+      <div id="ink-fill"></div>
+    </div>
+
+    <div id="draw-hint">Draw a line to protect the doge!</div>
     <div id="message"></div>
+    <div id="final-score"></div>
     <button id="restart-btn">Play Again</button>
   </div>
   <script src="game.js"></script>
