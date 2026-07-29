@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>Save the Doge</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #1a1a2e;
+      touch-action: none;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      background: #87CEEB;
+      touch-action: none;
+    }
+    #ui {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+    #timer {
+      position: absolute;
+      top: 15px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: 'Arial Black', Arial, sans-serif;
+      font-size: 28px;
+      color: white;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+      font-weight: bold;
+    }
+    #score {
+      position: absolute;
+      top: 15px;
+      right: 20px;
+      font-family: 'Arial Black', Arial, sans-serif;
+      font-size: 20px;
+      color: white;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+    }
+    #message {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-family: 'Arial Black', Arial, sans-serif;
+      font-size: 48px;
+      color: white;
+      text-shadow: 3px 3px 6px rgba(0,0,0,0.7);
+      text-align: center;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    #message.show { opacity: 1; }
+    #restart-btn {
+      position: absolute;
+      top: 60%;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 16px 48px;
+      font-size: 24px;
+      font-family: 'Arial Black', Arial, sans-serif;
+      background: #FFD700;
+      color: #333;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      pointer-events: auto;
+      display: none;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    }
+    #start-btn {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      padding: 20px 60px;
+      font-size: 28px;
+      font-family: 'Arial Black', Arial, sans-serif;
+      background: #FFD700;
+      color: #333;
+      border: none;
+      border-radius: 16px;
+      cursor: pointer;
+      pointer-events: auto;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      z-index: 10;
+    }
+    #start-title {
+      position: absolute;
+      top: 35%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-family: 'Arial Black', Arial, sans-serif;
+      font-size: 36px;
+      color: white;
+      text-shadow: 3px 3px 6px rgba(0,0,0,0.7);
+      text-align: center;
+      z-index: 10;
+      white-space: nowrap;
+    }
+    #start-sub {
+      position: absolute;
+      top: 43%;
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: Arial, sans-serif;
+      font-size: 16px;
+      color: rgba(255,255,255,0.8);
+      text-align: center;
+      z-index: 10;
+    }
+    #lives {
+      position: absolute;
+      top: 15px;
+      left: 20px;
+      font-family: 'Arial Black', Arial, sans-serif;
+      font-size: 22px;
+      color: #FF6B6B;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+    }
+  </style>
+</head>
+<body>
+  <canvas id="game"></canvas>
+  <div id="ui">
+    <div id="start-title">🐕 Save the Doge</div>
+    <div id="start-sub">Draw lines to protect the dog from bees!</div>
+    <button id="start-btn">Play Now</button>
+    <div id="lives"></div>
+    <div id="timer">10</div>
+    <div id="score">🐝 0</div>
+    <div id="message"></div>
+    <button id="restart-btn">Play Again</button>
+  </div>
+  <script src="game.js"></script>
+</body>
+</html>
