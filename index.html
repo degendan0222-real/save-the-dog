@@ -7,12 +7,15 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>Save the Doge</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Patrick+Hand&display=swap" rel="stylesheet">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body {
       width: 100%; height: 100%;
       overflow: hidden;
-      background: #1a1a2e;
+      background: #FDF2F8;
       touch-action: none;
       -webkit-user-select: none;
       user-select: none;
@@ -29,10 +32,69 @@
       width: 100%; height: 100%;
       pointer-events: none;
     }
+
+    #start-screen {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #FDF2F8 0%, #FCE9F2 30%, #EDE9FE 70%, #FDF2F8 100%);
+      z-index: 10;
+    }
+    #start-icon {
+      font-size: 80px;
+      margin-bottom: 8px;
+      filter: drop-shadow(0 8px 20px rgba(236,72,153,0.3));
+    }
+    #start-title {
+      font-family: 'Kalam', cursive;
+      font-size: 44px;
+      font-weight: 700;
+      color: #EC4899;
+      text-shadow: 3px 3px 0 rgba(139,92,246,0.2);
+      text-align: center;
+    }
+    #start-sub {
+      font-family: 'Patrick Hand', cursive;
+      font-size: 18px;
+      color: #7C3AED;
+      text-align: center;
+      margin: 6px 0 28px;
+      opacity: 0.85;
+    }
+    #start-btn {
+      font-family: 'Kalam', cursive;
+      font-weight: 700;
+      font-size: 26px;
+      color: #FFFFFF;
+      background: linear-gradient(135deg, #EC4899, #8B5CF6);
+      padding: 14px 50px;
+      border: 3px solid #D946EF;
+      border-radius: 20px;
+      cursor: pointer;
+      pointer-events: auto;
+      box-shadow:
+        0 4px 0 #7C3AED,
+        0 8px 25px rgba(139,92,246,0.35);
+      transition: all 0.15s ease;
+      letter-spacing: 1px;
+      position: relative;
+      top: 0;
+    }
+    #start-btn:active {
+      top: 4px;
+      box-shadow:
+        0 0px 0 #7C3AED,
+        0 8px 25px rgba(139,92,246,0.35);
+    }
+
     #hud {
       position: absolute; top: 0; left: 0;
       width: 100%;
-      padding: 8px 12px;
+      padding: 10px 14px;
       display: none;
       justify-content: space-between;
       align-items: flex-start;
@@ -42,98 +104,119 @@
     .hud-left, .hud-right {
       display: flex;
       flex-direction: column;
-      gap: 2px;
+      gap: 1px;
     }
     .hud-center {
       display: flex;
       flex-direction: column;
       align-items: center;
     }
-    #lives { font-size: 18px; line-height: 1.2; }
+    #lives { font-size: 18px; line-height: 1.3; }
     #level {
-      font-family: 'Arial Black', Arial, sans-serif;
+      font-family: 'Patrick Hand', cursive;
       font-size: 14px;
-      color: white;
-      text-shadow: 1px 1px 3px rgba(0,0,0,0.6);
+      color: #7C3AED;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.1);
     }
     #score {
-      font-family: 'Arial Black', Arial, sans-serif;
-      font-size: 14px;
-      color: white;
-      text-shadow: 1px 1px 3px rgba(0,0,0,0.6);
+      font-family: 'Kalam', cursive;
+      font-weight: 700;
+      font-size: 16px;
+      color: #8B5CF6;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.1);
     }
-    #timer {
-      font-family: 'Arial Black', Arial, sans-serif;
-      font-size: 32px;
-      color: white;
-      text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+    #timer-wrap {
+      background: rgba(139,92,246,0.1);
+      border-radius: 16px;
+      padding: 4px 18px;
+      border: 2px solid rgba(139,92,246,0.2);
     }
     #timer-label {
-      font-family: Arial, sans-serif;
+      font-family: 'Patrick Hand', cursive;
       font-size: 10px;
-      color: rgba(255,255,255,0.7);
+      color: #8B5CF6;
       text-transform: uppercase;
       letter-spacing: 1px;
+      text-align: center;
     }
+    #timer {
+      font-family: 'Kalam', cursive;
+      font-weight: 700;
+      font-size: 30px;
+      color: #EC4899;
+      text-align: center;
+      line-height: 1;
+    }
+
     #ink-container {
       position: absolute;
-      bottom: 70px;
+      bottom: 66px;
       left: 50%;
       transform: translateX(-50%);
       width: 200px;
-      height: 16px;
-      background: rgba(0,0,0,0.3);
-      border-radius: 10px;
-      border: 2px solid rgba(255,255,255,0.4);
+      height: 18px;
+      background: rgba(236,72,153,0.1);
+      border-radius: 12px;
+      border: 3px solid #FCE9F2;
       overflow: hidden;
       pointer-events: none;
       z-index: 5;
       display: none;
+      box-shadow:
+        inset 0 2px 6px rgba(236,72,153,0.15),
+        0 2px 8px rgba(139,92,246,0.1);
     }
     #ink-fill {
       height: 100%;
       width: 100%;
-      background: linear-gradient(90deg, #8B4513, #D2691E);
+      background: linear-gradient(90deg, #EC4899, #F59E0B);
       border-radius: 8px;
-      transition: width 0.1s;
+      transition: width 0.08s;
     }
     #ink-label {
       position: absolute;
-      top: -14px;
+      top: -16px;
       left: 50%;
       transform: translateX(-50%);
-      font-family: Arial, sans-serif;
-      font-size: 9px;
-      color: rgba(255,255,255,0.6);
+      font-family: 'Patrick Hand', cursive;
+      font-size: 10px;
+      color: #8B5CF6;
+      letter-spacing: 2px;
       text-transform: uppercase;
-      letter-spacing: 1px;
       white-space: nowrap;
     }
+    #ink-container.show { display: block; }
+
     #draw-hint {
       position: absolute;
-      bottom: 100px;
+      bottom: 96px;
       left: 50%;
       transform: translateX(-50%);
-      font-family: 'Arial Black', Arial, sans-serif;
-      font-size: 16px;
-      color: white;
-      text-shadow: 2px 2px 4px rgba(0,0,0,0.7);
+      font-family: 'Patrick Hand', cursive;
+      font-size: 17px;
+      color: #FFFFFF;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.2);
       text-align: center;
       pointer-events: none;
       z-index: 5;
-      background: rgba(0,0,0,0.3);
-      padding: 8px 20px;
+      background: linear-gradient(135deg, #EC4899, #8B5CF6);
+      padding: 8px 24px;
       border-radius: 20px;
       white-space: nowrap;
+      border: 2px solid #D946EF;
+      box-shadow: 0 4px 12px rgba(139,92,246,0.25);
     }
+    #draw-hint.hidden { display: none; }
+
     #message {
       position: absolute;
       top: 50%; left: 50%;
       transform: translate(-50%, -50%);
-      font-family: 'Arial Black', Arial, sans-serif;
-      font-size: 28px;
-      color: white;
-      text-shadow: 3px 3px 8px rgba(0,0,0,0.8);
+      font-family: 'Kalam', cursive;
+      font-weight: 700;
+      font-size: 30px;
+      color: #FFFFFF;
+      text-shadow: 3px 3px 0 rgba(139,92,246,0.3);
       text-align: center;
       opacity: 0;
       transition: opacity 0.3s;
@@ -141,92 +224,63 @@
       z-index: 20;
       line-height: 1.5;
       white-space: pre-line;
+      background: rgba(139,92,246,0.15);
+      padding: 20px 32px;
+      border-radius: 24px;
+      backdrop-filter: blur(8px);
+      border: 2px solid rgba(255,255,255,0.2);
     }
     #message.show { opacity: 1; }
+
     #restart-btn {
-      position: absolute;
-      top: 62%; left: 50%;
-      transform: translateX(-50%);
+      font-family: 'Kalam', cursive;
+      font-weight: 700;
+      font-size: 22px;
+      color: #FFFFFF;
+      background: linear-gradient(135deg, #F59E0B, #EC4899);
       padding: 14px 40px;
-      font-size: 20px;
-      font-family: 'Arial Black', Arial, sans-serif;
-      background: linear-gradient(135deg, #FFD700, #FFA000);
-      color: #333;
-      border: none;
-      border-radius: 12px;
+      border: 3px solid #D946EF;
+      border-radius: 20px;
       cursor: pointer;
       pointer-events: auto;
       display: none;
       z-index: 25;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-    }
-    #start-btn {
       position: absolute;
-      top: 56%; left: 50%;
-      transform: translate(-50%, -50%);
-      padding: 18px 50px;
-      font-size: 24px;
-      font-family: 'Arial Black', Arial, sans-serif;
-      background: linear-gradient(135deg, #FFD700, #FFA000);
-      color: #333;
-      border: none;
-      border-radius: 16px;
-      cursor: pointer;
-      pointer-events: auto;
-      z-index: 10;
-      box-shadow: 0 6px 25px rgba(0,0,0,0.4);
-    }
-    #start-title {
-      position: absolute;
-      top: 32%; left: 50%;
-      transform: translate(-50%, -50%);
-      font-family: 'Arial Black', Arial, sans-serif;
-      font-size: 42px;
-      color: white;
-      text-shadow: 3px 3px 8px rgba(0,0,0,0.7);
-      text-align: center;
-      z-index: 10;
-      white-space: nowrap;
-    }
-    #start-sub {
-      position: absolute;
-      top: 42%; left: 50%;
+      top: 62%;
+      left: 50%;
       transform: translateX(-50%);
-      font-family: Arial, sans-serif;
-      font-size: 16px;
-      color: rgba(255,255,255,0.85);
-      text-align: center;
-      z-index: 10;
-      background: rgba(0,0,0,0.2);
-      padding: 8px 16px;
-      border-radius: 10px;
+      box-shadow:
+        0 4px 0 #B45309,
+        0 8px 25px rgba(245,158,11,0.35);
+      transition: all 0.15s ease;
     }
+    #restart-btn:active {
+      top: calc(62% + 4px);
+      box-shadow:
+        0 0px 0 #B45309,
+        0 8px 25px rgba(245,158,11,0.35);
+    }
+
     #final-score {
       position: absolute;
-      top: 50%; left: 50%;
+      top: 52%; left: 50%;
       transform: translate(-50%, -50%);
-      font-family: Arial, sans-serif;
+      font-family: 'Patrick Hand', cursive;
       font-size: 18px;
       color: rgba(255,255,255,0.9);
       text-align: center;
       z-index: 20;
       display: none;
-      margin-top: 40px;
       white-space: pre-line;
-      line-height: 1.6;
+      line-height: 1.8;
     }
-    #dog-icon {
-      font-size: 60px;
-      display: block;
-      margin-bottom: 5px;
-    }
-    #ink-container.show { display: block; }
+
     @media (max-width: 400px) {
-      #start-title { font-size: 32px; top: 30%; }
-      #start-sub { font-size: 14px; top: 40%; }
-      #start-btn { padding: 14px 40px; font-size: 20px; }
+      #start-title { font-size: 34px; }
+      #start-btn { padding: 12px 40px; font-size: 22px; }
+      #start-icon { font-size: 60px; }
       #timer { font-size: 26px; }
-      #message { font-size: 22px; }
+      #message { font-size: 24px; padding: 14px 22px; }
       #ink-container { width: 160px; }
     }
   </style>
@@ -234,9 +288,12 @@
 <body>
   <canvas id="game"></canvas>
   <div id="ui">
-    <div id="start-title"><span id="dog-icon">🐕</span>Save the Doge</div>
-    <div id="start-sub">Draw a line to protect the dog from bees!</div>
-    <button id="start-btn">▶ Play</button>
+    <div id="start-screen">
+      <div id="start-icon">🐕</div>
+      <div id="start-title">Save the Doge</div>
+      <div id="start-sub">draw a line · protect the dog · survive 10s</div>
+      <button id="start-btn">▶ Play</button>
+    </div>
 
     <div id="hud">
       <div class="hud-left">
@@ -244,8 +301,10 @@
         <div id="level">Level 1</div>
       </div>
       <div class="hud-center">
-        <div id="timer-label">TIME</div>
-        <div id="timer">10</div>
+        <div id="timer-wrap">
+          <div id="timer-label">time</div>
+          <div id="timer">10</div>
+        </div>
       </div>
       <div class="hud-right">
         <div id="score">🐝 0</div>
@@ -253,14 +312,14 @@
     </div>
 
     <div id="ink-container">
-      <div id="ink-label">INK</div>
+      <div id="ink-label">ink</div>
       <div id="ink-fill"></div>
     </div>
 
-    <div id="draw-hint">Draw a line to protect the doge!</div>
+    <div id="draw-hint">✏️ Draw a line to protect the doge!</div>
     <div id="message"></div>
     <div id="final-score"></div>
-    <button id="restart-btn">Play Again</button>
+    <button id="restart-btn">▶ Play Again</button>
   </div>
   <script src="game.js"></script>
 </body>

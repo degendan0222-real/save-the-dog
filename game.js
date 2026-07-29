@@ -5,8 +5,7 @@ const scoreEl = document.getElementById('score');
 const messageEl = document.getElementById('message');
 const restartBtn = document.getElementById('restart-btn');
 const startBtn = document.getElementById('start-btn');
-const startTitle = document.getElementById('start-title');
-const startSub = document.getElementById('start-sub');
+const startScreen = document.getElementById('start-screen');
 const livesEl = document.getElementById('lives');
 const levelEl = document.getElementById('level');
 const inkContainer = document.getElementById('ink-container');
@@ -29,8 +28,6 @@ const bees = [];
 const lineSegments = [];
 const doge = {};
 const GROUND_H = 60;
-const DOGE_SIZE = 36;
-const MAX_INK = 800;
 
 let drawing = false;
 let currentLine = null;
@@ -38,8 +35,32 @@ let inkUsed = 0;
 let gameTimer = 0;
 let timerActive = false;
 let roundActive = false;
-let beeSpawnTimer = 0;
 let lastDrawPoint = null;
+
+const COLORS = {
+  primary: '#EC4899',
+  primaryDark: '#BE2475',
+  secondary: '#8B5CF6',
+  accent: '#F59E0B',
+  background: '#FDF2F8',
+  foreground: '#0F172A',
+  border: '#FCE9F2',
+  line: '#7C3AED',
+  ground1: '#A78BFA',
+  ground2: '#8B5CF6',
+  sky1: '#EDE9FE',
+  sky2: '#FDF2F8',
+  sky3: '#FCE9F2',
+  pink: '#FDF2F8',
+  dogeBody: '#D4A574',
+  dogeDark: '#C4956A',
+  dogeBelly: '#F5DEB3',
+  dogeNose: '#333',
+  beeBody: '#333',
+  beeStripe: '#FFD700',
+  beeWing: 'rgba(200,230,255,0.5)',
+  beeEye: '#FF4444'
+};
 
 function resize() {
   W = window.innerWidth;
@@ -48,8 +69,8 @@ function resize() {
   canvas.height = H;
   s = Math.min(W, H) / 800;
   doge.x = W / 2;
-  doge.y = H - GROUND_H * s - DOGE_SIZE * s * 0.7;
-  doge.r = DOGE_SIZE * s;
+  doge.y = H - GROUND_H * s - 32 * s;
+  doge.r = 32 * s;
   doge.hurtTimer = 0;
 }
 
@@ -71,10 +92,9 @@ function spawnBee() {
     case 2: x = Math.random() * W; y = -margin; break;
     case 3: x = -margin; y = Math.random() * H * 0.6; break;
   }
-  const target = getDogeCenter();
   bees.push({
-    x, y, vx: 0, vy: 0, target,
-    r: (16 + Math.random() * 4) * s,
+    x, y, vx: 0, vy: 0, target: getDogeCenter(),
+    r: (15 + Math.random() * 4) * s,
     speed: (1.2 + Math.random() * 1.5 + level * 0.08) * s,
     wobble: Math.random() * Math.PI * 2,
     wobbleSpeed: 0.02 + Math.random() * 0.02,
@@ -102,9 +122,7 @@ function findNearestSegment(x, y, maxDist) {
 
 function updateBees() {
   const maxBees = Math.min(3 + Math.floor(level / 2), 12);
-  if (bees.length < maxBees && frameCount % Math.max(25, 60 - level * 2) === 0) {
-    spawnBee();
-  }
+  if (bees.length < maxBees && frameCount % Math.max(25, 60 - level * 2) === 0) spawnBee();
 
   for (const bee of bees) {
     if (!bee.alive) continue;
@@ -131,7 +149,7 @@ function updateBees() {
     if (segIdx >= 0) {
       const seg = lineSegments[segIdx];
       seg.hp--;
-      if (seg.hp <= 0) { seg.hp = 0; }
+      if (seg.hp <= 0) seg.hp = 0;
       bee.stuck = 6;
       bee.vx *= -0.3; bee.vy *= -0.3;
       bee.x += bee.vx; bee.y += bee.vy;
@@ -163,8 +181,8 @@ function roundEnd(success) {
     const maxHp = lineSegments.length * (8 + Math.floor(level / 2));
     const lineHealth = maxHp > 0 ? totalHp / maxHp : 0;
     let roundStars = 1;
-    if (lineHealth > 0.6 && inkUsed < MAX_INK * 0.35) roundStars = 3;
-    else if (lineHealth > 0.3 && inkUsed < MAX_INK * 0.65) roundStars = 2;
+    if (lineHealth > 0.6 && inkUsed < 280) roundStars = 3;
+    else if (lineHealth > 0.3 && inkUsed < 520) roundStars = 2;
     stars += roundStars;
     score++;
     if (lives < 3) lives++;
@@ -183,7 +201,7 @@ function gameOver() {
   gameState = 'over';
   timerActive = false;
   roundActive = false;
-  finalScore.textContent = `Level ${level} | ${score} Saved | ${stars}⭐`;
+  finalScore.textContent = `Level ${level} · ${score} Saved · ${stars}⭐`;
   finalScore.style.display = 'block';
   showMessage('Game Over! 💔', true);
 }
@@ -205,8 +223,8 @@ function resetRound() {
   timerEl.textContent = '10';
   inkFill.style.width = '100%';
   inkContainer.classList.add('show');
-  drawHint.style.display = 'block';
-  drawHint.textContent = 'Draw a line to protect the doge!';
+  drawHint.classList.remove('hidden');
+  drawHint.textContent = '✏️ Draw a line to protect the doge!';
   levelEl.textContent = 'Level ' + level;
   updateUI();
   hideMessage();
@@ -216,9 +234,7 @@ function resetRound() {
 function startGame() {
   gameState = 'playing';
   level = 1; score = 0; lives = 3; stars = 0;
-  startBtn.style.display = 'none';
-  startTitle.style.display = 'none';
-  startSub.style.display = 'none';
+  startScreen.style.display = 'none';
   document.getElementById('hud').style.display = 'flex';
   finalScore.style.display = 'none';
   resetRound();
@@ -249,14 +265,10 @@ function moveDraw(pos) {
   const dx = pos.x - lastDrawPoint.x;
   const dy = pos.y - lastDrawPoint.y;
   if (Math.sqrt(dx * dx + dy * dy) > 3 * s) {
-    const inkCost = Math.sqrt(dx * dx + dy * dy);
-    inkUsed += inkCost;
-    const pct = Math.min(inkUsed / MAX_INK, 1);
+    inkUsed += Math.sqrt(dx * dx + dy * dy);
+    const pct = Math.min(inkUsed / 800, 1);
     inkFill.style.width = (1 - pct) * 100 + '%';
-    if (inkUsed >= MAX_INK) {
-      endDraw();
-      return;
-    }
+    if (inkUsed >= 800) { endDraw(); return; }
     currentLine.points.push({ x: pos.x, y: pos.y });
     lastDrawPoint = pos;
   }
@@ -275,7 +287,7 @@ function endDraw() {
       });
     }
     lines.push(currentLine);
-    drawHint.textContent = 'Hold on! Protect the doge!';
+    drawHint.textContent = '🛡️ Hold on! Protect the doge!';
     phase = 'protect';
     roundActive = true;
     timerActive = true;
@@ -327,6 +339,18 @@ function hideMessage() {
   restartBtn.style.display = 'none';
 }
 
+function roundRect(x, y, w, h, r) {
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+}
+
 function drawDoge() {
   const x = doge.x, y = doge.y, r = doge.r;
   if (doge.hurtTimer > 0) doge.hurtTimer--;
@@ -337,72 +361,67 @@ function drawDoge() {
   const earFlap = Math.sin(frameCount * 0.08) * 1.5 * s;
 
   ctx.save();
-  ctx.translate(-r * 0.5, -r * 0.7);
-  ctx.fillStyle = '#C4956A';
+  ctx.translate(-r * 0.5, -r * 0.65);
+  ctx.fillStyle = COLORS.dogeDark;
   ctx.beginPath();
-  ctx.moveTo(0, 0);
-  ctx.lineTo(-r * 0.15, -r * 0.45 + earFlap);
-  ctx.lineTo(r * 0.15, -r * 0.4 + earFlap);
-  ctx.closePath(); ctx.fill();
+  roundRect(-r * 0.22, -r * 0.45, r * 0.44, r * 0.5 + earFlap, r * 0.1);
+  ctx.fill();
   ctx.fillStyle = '#F5CBBE';
   ctx.beginPath();
-  ctx.moveTo(0, 0);
-  ctx.lineTo(-r * 0.18, -r * 0.5 + earFlap);
-  ctx.lineTo(r * 0.12, -r * 0.45 + earFlap);
-  ctx.closePath(); ctx.fill();
+  roundRect(-r * 0.14, -r * 0.35, r * 0.28, r * 0.35 + earFlap * 0.5, r * 0.08);
+  ctx.fill();
   ctx.restore();
 
   ctx.save();
-  ctx.translate(r * 0.5, -r * 0.7);
-  ctx.fillStyle = '#C4956A';
+  ctx.translate(r * 0.5, -r * 0.65);
+  ctx.fillStyle = COLORS.dogeDark;
   ctx.beginPath();
-  ctx.moveTo(0, 0);
-  ctx.lineTo(-r * 0.15, -r * 0.45 + earFlap);
-  ctx.lineTo(r * 0.15, -r * 0.4 + earFlap);
-  ctx.closePath(); ctx.fill();
+  roundRect(-r * 0.22, -r * 0.45, r * 0.44, r * 0.5 + earFlap, r * 0.1);
+  ctx.fill();
   ctx.fillStyle = '#F5CBBE';
   ctx.beginPath();
-  ctx.moveTo(0, 0);
-  ctx.lineTo(-r * 0.12, -r * 0.5 + earFlap);
-  ctx.lineTo(r * 0.18, -r * 0.45 + earFlap);
-  ctx.closePath(); ctx.fill();
+  roundRect(-r * 0.14, -r * 0.35, r * 0.28, r * 0.35 + earFlap * 0.5, r * 0.08);
+  ctx.fill();
   ctx.restore();
 
-  const bodyColor = hurt ? '#FF6B6B' : '#D4A574';
+  const bodyColor = hurt ? '#FF6B6B' : COLORS.dogeBody;
   ctx.fillStyle = bodyColor;
+  ctx.shadowColor = 'rgba(139,92,246,0.15)';
+  ctx.shadowBlur = 12 * s;
   ctx.beginPath();
   ctx.ellipse(0, r * 0.1, r * 0.85, r * 0.75, 0, 0, Math.PI * 2);
   ctx.fill();
+  ctx.shadowBlur = 0;
 
-  ctx.fillStyle = '#F5DEB3';
+  ctx.fillStyle = COLORS.dogeBelly;
   ctx.beginPath();
   ctx.ellipse(0, r * 0.35, r * 0.5, r * 0.35, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  ctx.fillStyle = '#C4956A';
+  ctx.fillStyle = COLORS.dogeDark;
   ctx.beginPath();
-  ctx.ellipse(-r * 0.25, -r * 0.15, r * 0.3, r * 0.3, -0.1, 0, Math.PI * 2);
+  ctx.ellipse(-r * 0.25, -r * 0.1, r * 0.3, r * 0.28, -0.1, 0, Math.PI * 2);
   ctx.fill();
   ctx.beginPath();
-  ctx.ellipse(r * 0.25, -r * 0.15, r * 0.3, r * 0.3, 0.1, 0, Math.PI * 2);
+  ctx.ellipse(r * 0.25, -r * 0.1, r * 0.3, r * 0.28, 0.1, 0, Math.PI * 2);
   ctx.fill();
 
-  ctx.fillStyle = '#333';
+  ctx.fillStyle = COLORS.dogeNose;
   ctx.beginPath();
-  ctx.arc(-r * 0.16, -r * 0.2, r * 0.06, 0, Math.PI * 2);
+  ctx.arc(-r * 0.16, -r * 0.15, r * 0.06, 0, Math.PI * 2);
   ctx.fill();
   ctx.beginPath();
-  ctx.arc(r * 0.16, -r * 0.2, r * 0.06, 0, Math.PI * 2);
+  ctx.arc(r * 0.16, -r * 0.15, r * 0.06, 0, Math.PI * 2);
   ctx.fill();
   ctx.fillStyle = 'white';
   ctx.beginPath();
-  ctx.arc(-r * 0.13, -r * 0.23, r * 0.02, 0, Math.PI * 2);
+  ctx.arc(-r * 0.13, -r * 0.18, r * 0.025, 0, Math.PI * 2);
   ctx.fill();
   ctx.beginPath();
-  ctx.arc(r * 0.19, -r * 0.23, r * 0.02, 0, Math.PI * 2);
+  ctx.arc(r * 0.19, -r * 0.18, r * 0.025, 0, Math.PI * 2);
   ctx.fill();
 
-  ctx.fillStyle = '#333';
+  ctx.fillStyle = COLORS.dogeNose;
   ctx.beginPath();
   ctx.arc(0, r * 0.08, r * 0.12, 0, Math.PI);
   ctx.fill();
@@ -424,12 +443,15 @@ function drawBee(bee) {
   ctx.save();
   ctx.translate(x, y + buzz);
 
-  ctx.fillStyle = '#333';
+  ctx.fillStyle = COLORS.beeBody;
+  ctx.shadowColor = 'rgba(0,0,0,0.1)';
+  ctx.shadowBlur = 6 * s;
   ctx.beginPath();
   ctx.ellipse(0, 0, r, r * 0.7, 0, 0, Math.PI * 2);
   ctx.fill();
+  ctx.shadowBlur = 0;
 
-  ctx.fillStyle = '#FFD700';
+  ctx.fillStyle = COLORS.beeStripe;
   ctx.beginPath();
   ctx.ellipse(-r * 0.28, 0, r * 0.2, r * 0.45, 0, 0, Math.PI * 2);
   ctx.fill();
@@ -438,7 +460,7 @@ function drawBee(bee) {
   ctx.fill();
 
   const w = Math.sin(frameCount * 0.4 + bee.wobble) * 0.25 + 0.5;
-  ctx.fillStyle = 'rgba(200,230,255,0.6)';
+  ctx.fillStyle = COLORS.beeWing;
   ctx.beginPath();
   ctx.ellipse(-r * 0.9, -r * 0.3, r * 0.55, r * 0.15 * w, -0.3, 0, Math.PI * 2);
   ctx.fill();
@@ -446,7 +468,7 @@ function drawBee(bee) {
   ctx.ellipse(r * 0.9, -r * 0.3, r * 0.55, r * 0.15 * w, 0.3, 0, Math.PI * 2);
   ctx.fill();
 
-  ctx.fillStyle = '#FF4444';
+  ctx.fillStyle = COLORS.beeEye;
   ctx.beginPath();
   ctx.arc(-r * 0.45, -r * 0.12, r * 0.05, 0, Math.PI * 2);
   ctx.fill();
@@ -465,7 +487,7 @@ function drawBee(bee) {
   ctx.restore();
 }
 
-function drawLines() {
+function drawDrawnLines() {
   for (const l of lines) {
     if (l.points.length < 2) continue;
     ctx.beginPath();
@@ -473,12 +495,12 @@ function drawLines() {
     for (let i = 1; i < l.points.length; i++) {
       ctx.lineTo(l.points[i].x, l.points[i].y);
     }
-    ctx.strokeStyle = '#5C4033';
+    ctx.strokeStyle = COLORS.line;
     ctx.lineWidth = 10 * s;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
-    ctx.shadowColor = 'rgba(0,0,0,0.15)';
-    ctx.shadowBlur = 3 * s;
+    ctx.shadowColor = 'rgba(139,92,246,0.3)';
+    ctx.shadowBlur = 6 * s;
     ctx.stroke();
     ctx.shadowBlur = 0;
   }
@@ -491,17 +513,17 @@ function drawCurrentLine() {
   for (let i = 1; i < currentLine.points.length; i++) {
     ctx.lineTo(currentLine.points[i].x, currentLine.points[i].y);
   }
-  ctx.strokeStyle = '#5C4033';
+  ctx.strokeStyle = COLORS.line;
   ctx.lineWidth = 10 * s;
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
-  ctx.shadowColor = 'rgba(0,0,0,0.15)';
-  ctx.shadowBlur = 3 * s;
+  ctx.shadowColor = 'rgba(139,92,246,0.3)';
+  ctx.shadowBlur = 6 * s;
   ctx.stroke();
   ctx.shadowBlur = 0;
 }
 
-function drawSegmentDamage() {
+function drawDamage() {
   for (const seg of lineSegments) {
     if (seg.hp <= 0) continue;
     const maxHp = 8 + Math.floor(level / 2);
@@ -509,7 +531,7 @@ function drawSegmentDamage() {
     if (pct < 0.5) {
       const mx = (seg.x1 + seg.x2) / 2;
       const my = (seg.y1 + seg.y2) / 2;
-      ctx.fillStyle = `rgba(255, 50, 50, ${(0.5 - pct) * 0.6})`;
+      ctx.fillStyle = `rgba(255, 50, 50, ${(0.5 - pct) * 0.5})`;
       ctx.beginPath();
       ctx.arc(mx, my, 5 * s, 0, Math.PI * 2);
       ctx.fill();
@@ -519,12 +541,29 @@ function drawSegmentDamage() {
 
 function drawGround() {
   const gh = GROUND_H * s;
+
+  ctx.fillStyle = COLORS.ground1;
+  ctx.shadowColor = 'rgba(139,92,246,0.1)';
+  ctx.shadowBlur = 20 * s;
+  ctx.fillRect(0, H - gh, W, gh);
+  ctx.shadowBlur = 0;
+
   const grad = ctx.createLinearGradient(0, H - gh, 0, H);
-  grad.addColorStop(0, '#66BB6A');
-  grad.addColorStop(1, '#388E3C');
+  grad.addColorStop(0, '#A78BFA');
+  grad.addColorStop(0.3, '#8B5CF6');
+  grad.addColorStop(1, '#7C3AED');
   ctx.fillStyle = grad;
   ctx.fillRect(0, H - gh, W, gh);
-  ctx.strokeStyle = '#2E7D32';
+
+  ctx.fillStyle = 'rgba(255,255,255,0.15)';
+  for (let i = 0; i < W; i += 30 * s) {
+    const gx = i + Math.sin(i * 0.05 + frameCount * 0.002) * 2 * s;
+    ctx.beginPath();
+    roundRect(gx, H - gh + 2 * s, 8 * s, 4 * s, 2 * s);
+    ctx.fill();
+  }
+
+  ctx.strokeStyle = '#7C3AED';
   ctx.lineWidth = 3 * s;
   ctx.beginPath();
   ctx.moveTo(0, H - gh);
@@ -532,12 +571,21 @@ function drawGround() {
   ctx.stroke();
 }
 
+function drawSky() {
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, COLORS.sky1);
+  grad.addColorStop(0.5, COLORS.sky2);
+  grad.addColorStop(1, COLORS.sky3);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+}
+
 function drawClouds() {
-  ctx.fillStyle = 'rgba(255,255,255,0.5)';
+  ctx.fillStyle = 'rgba(255,255,255,0.4)';
   const cs = [
-    { x: (frameCount * 0.12) % (W + 200) - 100, y: 50 * s, sx: 1, sy: 1 },
-    { x: (frameCount * 0.08 + 300) % (W + 200) - 100, y: 90 * s, sx: 0.7, sy: 0.6 },
-    { x: (frameCount * 0.1 + 600) % (W + 200) - 100, y: 30 * s, sx: 1.2, sy: 0.9 },
+    { x: (frameCount * 0.1) % (W + 200) - 100, y: 55 * s, sx: 1, sy: 1 },
+    { x: (frameCount * 0.07 + 300) % (W + 200) - 100, y: 90 * s, sx: 0.7, sy: 0.6 },
+    { x: (frameCount * 0.09 + 600) % (W + 200) - 100, y: 30 * s, sx: 1.2, sy: 0.9 },
   ];
   for (const c of cs) {
     const r = 30 * s * c.sx;
@@ -550,18 +598,28 @@ function drawClouds() {
   }
 }
 
-function draw() {
-  const grad = ctx.createLinearGradient(0, 0, 0, H);
-  grad.addColorStop(0, '#4FC3F7');
-  grad.addColorStop(0.5, '#81D4FA');
-  grad.addColorStop(1, '#B3E5FC');
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, W, H);
+function drawSparkles() {
+  ctx.fillStyle = 'rgba(245,158,11,0.5)';
+  const positions = [
+    { x: W * 0.15, y: H * 0.2, phase: 0 },
+    { x: W * 0.85, y: H * 0.15, phase: 1.7 },
+    { x: W * 0.7, y: H * 0.35, phase: 3.1 },
+  ];
+  for (const p of positions) {
+    const size = (Math.sin(frameCount * 0.04 + p.phase) * 0.5 + 0.5) * 5 * s;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, size, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
 
+function draw() {
+  drawSky();
   drawClouds();
-  drawLines();
+  drawSparkles();
+  drawDrawnLines();
   if (phase === 'draw') drawCurrentLine();
-  drawSegmentDamage();
+  drawDamage();
   for (const bee of bees) drawBee(bee);
   drawGround();
   drawDoge();
