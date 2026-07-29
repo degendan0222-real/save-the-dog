@@ -26,6 +26,7 @@
       display: block;
       width: 100%; height: 100%;
       touch-action: none;
+      cursor: crosshair;
     }
     #ui {
       position: absolute; top: 0; left: 0;
@@ -34,254 +35,129 @@
     }
 
     #start-screen {
-      position: absolute;
-      top: 0; left: 0;
+      position: absolute; top: 0; left: 0;
       width: 100%; height: 100%;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      background: linear-gradient(135deg, #FDF2F8 0%, #FCE9F2 30%, #EDE9FE 70%, #FDF2F8 100%);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      background: linear-gradient(180deg, #E0F7FA 0%, #B3E5FC 40%, #E1F5FE 100%);
       z-index: 10;
+      transition: opacity 0.4s;
     }
     #start-icon {
-      font-size: 80px;
-      margin-bottom: 8px;
-      filter: drop-shadow(0 8px 20px rgba(236,72,153,0.3));
+      font-size: 72px; margin-bottom: 4px;
+      animation: bob 2s ease-in-out infinite;
+    }
+    @keyframes bob {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-8px); }
     }
     #start-title {
       font-family: 'Kalam', cursive;
-      font-size: 44px;
-      font-weight: 700;
+      font-size: 40px; font-weight: 700;
       color: #EC4899;
-      text-shadow: 3px 3px 0 rgba(139,92,246,0.2);
+      text-shadow: 2px 2px 0 rgba(139,92,246,0.15);
       text-align: center;
     }
     #start-sub {
       font-family: 'Patrick Hand', cursive;
-      font-size: 18px;
-      color: #7C3AED;
-      text-align: center;
-      margin: 6px 0 28px;
-      opacity: 0.85;
+      font-size: 16px; color: #7C3AED;
+      text-align: center; margin: 4px 0 20px; opacity: 0.8;
     }
     #start-btn {
-      font-family: 'Kalam', cursive;
-      font-weight: 700;
-      font-size: 26px;
-      color: #FFFFFF;
+      font-family: 'Kalam', cursive; font-weight: 700;
+      font-size: 24px; color: #FFFFFF;
       background: linear-gradient(135deg, #EC4899, #8B5CF6);
-      padding: 14px 50px;
-      border: 3px solid #D946EF;
-      border-radius: 20px;
-      cursor: pointer;
-      pointer-events: auto;
-      box-shadow:
-        0 4px 0 #7C3AED,
-        0 8px 25px rgba(139,92,246,0.35);
-      transition: all 0.15s ease;
+      padding: 12px 44px; border: none; border-radius: 50px;
+      cursor: pointer; pointer-events: auto;
+      box-shadow: 0 4px 0 #7C3AED, 0 8px 24px rgba(139,92,246,0.3);
+      transition: transform 0.1s;
       letter-spacing: 1px;
-      position: relative;
-      top: 0;
     }
-    #start-btn:active {
-      top: 4px;
-      box-shadow:
-        0 0px 0 #7C3AED,
-        0 8px 25px rgba(139,92,246,0.35);
-    }
+    #start-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #7C3AED, 0 8px 24px rgba(139,92,246,0.3); }
 
     #hud {
-      position: absolute; top: 0; left: 0;
-      width: 100%;
-      padding: 10px 14px;
-      display: none;
-      justify-content: space-between;
-      align-items: flex-start;
-      pointer-events: none;
-      z-index: 5;
+      position: absolute; top: 0; left: 0; width: 100%;
+      padding: 8px 12px; display: none;
+      justify-content: space-between; align-items: flex-start;
+      pointer-events: none; z-index: 5;
     }
-    .hud-left, .hud-right {
-      display: flex;
-      flex-direction: column;
-      gap: 1px;
-    }
-    .hud-center {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-    #lives { font-size: 18px; line-height: 1.3; }
-    #level {
-      font-family: 'Patrick Hand', cursive;
-      font-size: 14px;
-      color: #7C3AED;
-      text-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    }
-    #score {
-      font-family: 'Kalam', cursive;
-      font-weight: 700;
-      font-size: 16px;
-      color: #8B5CF6;
-      text-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    }
+    .hud-left, .hud-right { display: flex; flex-direction: column; gap: 1px; }
+    .hud-center { display: flex; flex-direction: column; align-items: center; }
+    #lives { font-size: 16px; line-height: 1.2; }
+    #level { font-family: 'Patrick Hand', cursive; font-size: 13px; color: #7C3AED; }
+    #score { font-family: 'Kalam', cursive; font-weight: 700; font-size: 15px; color: #8B5CF6; }
     #timer-wrap {
-      background: rgba(139,92,246,0.1);
-      border-radius: 16px;
-      padding: 4px 18px;
-      border: 2px solid rgba(139,92,246,0.2);
+      background: rgba(139,92,246,0.08);
+      border-radius: 14px; padding: 3px 14px;
+      border: 2px solid rgba(139,92,246,0.15);
     }
-    #timer-label {
-      font-family: 'Patrick Hand', cursive;
-      font-size: 10px;
-      color: #8B5CF6;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      text-align: center;
-    }
-    #timer {
-      font-family: 'Kalam', cursive;
-      font-weight: 700;
-      font-size: 30px;
-      color: #EC4899;
-      text-align: center;
-      line-height: 1;
-    }
+    #timer-label { font-family: 'Patrick Hand', cursive; font-size: 9px; color: #8B5CF6; letter-spacing: 1px; text-align: center; }
+    #timer { font-family: 'Kalam', cursive; font-weight: 700; font-size: 26px; color: #EC4899; text-align: center; line-height: 1; }
+    #stars-display { font-size: 14px; margin-top: 1px; }
 
-    #ink-container {
-      position: absolute;
-      bottom: 66px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 200px;
-      height: 18px;
-      background: rgba(236,72,153,0.1);
-      border-radius: 12px;
-      border: 3px solid #FCE9F2;
-      overflow: hidden;
-      pointer-events: none;
-      z-index: 5;
-      display: none;
-      box-shadow:
-        inset 0 2px 6px rgba(236,72,153,0.15),
-        0 2px 8px rgba(139,92,246,0.1);
+    #ink-bar-bg {
+      position: absolute; bottom: 50px; left: 50%; transform: translateX(-50%);
+      width: 180px; height: 14px; background: rgba(236,72,153,0.08);
+      border-radius: 10px; border: 2px solid #FCE7F3; overflow: hidden;
+      pointer-events: none; z-index: 5; display: none;
+      box-shadow: inset 0 2px 4px rgba(236,72,153,0.1);
     }
-    #ink-fill {
-      height: 100%;
-      width: 100%;
-      background: linear-gradient(90deg, #EC4899, #F59E0B);
-      border-radius: 8px;
-      transition: width 0.08s;
+    #ink-bar-fill { height: 100%; width: 100%; background: linear-gradient(90deg, #EC4899, #F59E0B); border-radius: 8px; transition: width 0.05s; }
+    #ink-bar-label {
+      position: absolute; top: -14px; left: 50%; transform: translateX(-50%);
+      font-family: 'Patrick Hand', cursive; font-size: 9px; color: #A78BFA; text-transform: uppercase; letter-spacing: 1px; white-space: nowrap;
     }
-    #ink-label {
-      position: absolute;
-      top: -16px;
-      left: 50%;
-      transform: translateX(-50%);
-      font-family: 'Patrick Hand', cursive;
-      font-size: 10px;
-      color: #8B5CF6;
-      letter-spacing: 2px;
-      text-transform: uppercase;
-      white-space: nowrap;
-    }
-    #ink-container.show { display: block; }
 
     #draw-hint {
-      position: absolute;
-      bottom: 96px;
-      left: 50%;
-      transform: translateX(-50%);
-      font-family: 'Patrick Hand', cursive;
-      font-size: 17px;
-      color: #FFFFFF;
-      text-shadow: 0 2px 8px rgba(0,0,0,0.2);
-      text-align: center;
-      pointer-events: none;
-      z-index: 5;
+      position: absolute; bottom: 72px; left: 50%; transform: translateX(-50%);
+      font-family: 'Patrick Hand', cursive; font-size: 16px;
+      color: #FFFFFF; text-shadow: 0 2px 6px rgba(0,0,0,0.15);
+      text-align: center; pointer-events: none; z-index: 5;
       background: linear-gradient(135deg, #EC4899, #8B5CF6);
-      padding: 8px 24px;
-      border-radius: 20px;
-      white-space: nowrap;
-      border: 2px solid #D946EF;
-      box-shadow: 0 4px 12px rgba(139,92,246,0.25);
+      padding: 7px 20px; border-radius: 18px; white-space: nowrap;
+      border: 2px solid rgba(255,255,255,0.3);
+      box-shadow: 0 3px 10px rgba(139,92,246,0.2);
     }
     #draw-hint.hidden { display: none; }
 
     #message {
-      position: absolute;
-      top: 50%; left: 50%;
+      position: absolute; top: 50%; left: 50%;
       transform: translate(-50%, -50%);
-      font-family: 'Kalam', cursive;
-      font-weight: 700;
-      font-size: 30px;
-      color: #FFFFFF;
-      text-shadow: 3px 3px 0 rgba(139,92,246,0.3);
-      text-align: center;
-      opacity: 0;
-      transition: opacity 0.3s;
-      pointer-events: none;
-      z-index: 20;
-      line-height: 1.5;
-      white-space: pre-line;
-      background: rgba(139,92,246,0.15);
-      padding: 20px 32px;
-      border-radius: 24px;
-      backdrop-filter: blur(8px);
-      border: 2px solid rgba(255,255,255,0.2);
+      font-family: 'Kalam', cursive; font-weight: 700; font-size: 26px;
+      color: #FFFFFF; text-shadow: 2px 2px 0 rgba(139,92,246,0.3);
+      text-align: center; opacity: 0; transition: opacity 0.3s;
+      pointer-events: none; z-index: 20; line-height: 1.5; white-space: pre-line;
+      background: rgba(139,92,246,0.12);
+      padding: 16px 28px; border-radius: 20px;
+      backdrop-filter: blur(6px);
+      border: 2px solid rgba(255,255,255,0.15);
     }
     #message.show { opacity: 1; }
 
     #restart-btn {
-      font-family: 'Kalam', cursive;
-      font-weight: 700;
-      font-size: 22px;
-      color: #FFFFFF;
-      background: linear-gradient(135deg, #F59E0B, #EC4899);
-      padding: 14px 40px;
-      border: 3px solid #D946EF;
-      border-radius: 20px;
-      cursor: pointer;
-      pointer-events: auto;
-      display: none;
-      z-index: 25;
-      position: absolute;
-      top: 62%;
-      left: 50%;
-      transform: translateX(-50%);
-      box-shadow:
-        0 4px 0 #B45309,
-        0 8px 25px rgba(245,158,11,0.35);
-      transition: all 0.15s ease;
+      font-family: 'Kalam', cursive; font-weight: 700; font-size: 20px;
+      color: #FFFFFF; background: linear-gradient(135deg, #F59E0B, #EC4899);
+      padding: 10px 32px; border: none; border-radius: 50px;
+      cursor: pointer; pointer-events: auto; display: none; z-index: 25;
+      position: absolute; top: 60%; left: 50%; transform: translateX(-50%);
+      box-shadow: 0 4px 0 #B45309, 0 8px 20px rgba(245,158,11,0.3);
     }
-    #restart-btn:active {
-      top: calc(62% + 4px);
-      box-shadow:
-        0 0px 0 #B45309,
-        0 8px 25px rgba(245,158,11,0.35);
-    }
+    #restart-btn:active { transform: translateX(-50%) translateY(3px); box-shadow: 0 1px 0 #B45309, 0 8px 20px rgba(245,158,11,0.3); }
 
     #final-score {
-      position: absolute;
-      top: 52%; left: 50%;
-      transform: translate(-50%, -50%);
-      font-family: 'Patrick Hand', cursive;
-      font-size: 18px;
-      color: rgba(255,255,255,0.9);
-      text-align: center;
-      z-index: 20;
-      display: none;
-      white-space: pre-line;
-      line-height: 1.8;
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      font-family: 'Patrick Hand', cursive; font-size: 17px;
+      color: rgba(255,255,255,0.85); text-align: center; z-index: 20;
+      display: none; white-space: pre-line; line-height: 1.8;
     }
 
     @media (max-width: 400px) {
-      #start-title { font-size: 34px; }
-      #start-btn { padding: 12px 40px; font-size: 22px; }
-      #start-icon { font-size: 60px; }
-      #timer { font-size: 26px; }
-      #message { font-size: 24px; padding: 14px 22px; }
-      #ink-container { width: 160px; }
+      #start-title { font-size: 32px; }
+      #start-btn { padding: 10px 36px; font-size: 20px; }
+      #start-icon { font-size: 56px; }
+      #timer { font-size: 22px; }
+      #message { font-size: 22px; padding: 12px 20px; }
+      #ink-bar-bg { width: 150px; }
     }
   </style>
 </head>
@@ -289,10 +165,10 @@
   <canvas id="game"></canvas>
   <div id="ui">
     <div id="start-screen">
-      <div id="start-icon">🐕</div>
+      <div id="start-icon">🐶</div>
       <div id="start-title">Save the Doge</div>
-      <div id="start-sub">draw a line · protect the dog · survive 10s</div>
-      <button id="start-btn">▶ Play</button>
+      <div id="start-sub">draw a protective line · save the doge!</div>
+      <button id="start-btn">▶ Play!</button>
     </div>
 
     <div id="hud">
@@ -305,15 +181,16 @@
           <div id="timer-label">time</div>
           <div id="timer">10</div>
         </div>
+        <div id="stars-display"></div>
       </div>
       <div class="hud-right">
         <div id="score">🐝 0</div>
       </div>
     </div>
 
-    <div id="ink-container">
-      <div id="ink-label">ink</div>
-      <div id="ink-fill"></div>
+    <div id="ink-bar-bg">
+      <div id="ink-bar-label">ink</div>
+      <div id="ink-bar-fill"></div>
     </div>
 
     <div id="draw-hint">✏️ Draw a line to protect the doge!</div>

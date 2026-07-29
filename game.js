@@ -8,324 +8,318 @@ const startBtn = document.getElementById('start-btn');
 const startScreen = document.getElementById('start-screen');
 const livesEl = document.getElementById('lives');
 const levelEl = document.getElementById('level');
-const inkContainer = document.getElementById('ink-container');
-const inkFill = document.getElementById('ink-fill');
+const starsEl = document.getElementById('stars-display');
+const inkBarBg = document.getElementById('ink-bar-bg');
+const inkBarFill = document.getElementById('ink-bar-fill');
 const drawHint = document.getElementById('draw-hint');
 const finalScore = document.getElementById('final-score');
 
-let W, H, s;
-let gameState = 'menu';
-let phase = 'draw';
-let level = 1;
-let score = 0;
-let lives = 3;
+const W = () => window.innerWidth;
+const H = () => window.innerHeight;
+let s = 1;
+
+const STATE = { MENU: 0, DRAW: 1, PROTECT: 2, WIN: 3, LOSE: 4, GAMEOVER: 5 };
+let state = STATE.MENU;
+let level = 1, score = 0, lives = 3, stars = 0, roundStars = 0;
 let timeLeft = 10;
 let frameCount = 0;
-let stars = 0;
-
-const lines = [];
-const bees = [];
-const lineSegments = [];
-const doge = {};
-const GROUND_H = 60;
-
-let drawing = false;
-let currentLine = null;
-let inkUsed = 0;
 let gameTimer = 0;
 let timerActive = false;
 let roundActive = false;
 let lastDrawPoint = null;
+let drawStartPos = null;
 
-const COLORS = {
-  primary: '#EC4899',
-  primaryDark: '#BE2475',
-  secondary: '#8B5CF6',
-  accent: '#F59E0B',
-  background: '#FDF2F8',
-  foreground: '#0F172A',
-  border: '#FCE9F2',
-  line: '#7C3AED',
-  ground1: '#A78BFA',
-  ground2: '#8B5CF6',
-  sky1: '#EDE9FE',
-  sky2: '#FDF2F8',
-  sky3: '#FCE9F2',
-  pink: '#FDF2F8',
-  dogeBody: '#D4A574',
-  dogeDark: '#C4956A',
-  dogeBelly: '#F5DEB3',
-  dogeNose: '#333',
-  beeBody: '#333',
-  beeStripe: '#FFD700',
-  beeWing: 'rgba(200,230,255,0.5)',
-  beeEye: '#FF4444'
-};
+const doge = { x: 0, y: 0, r: 0, hurtTimer: 0, blinkTimer: 0 };
+const GROUND_H_RATIO = 0.08;
+
+let bees = [];
+let drawnPoints = [];
+let lineSegments = [];
+let inkUsed = 0;
+const MAX_INK = 600;
+const particles = [];
+const clouds = [];
+const flowers = [];
 
 function resize() {
-  W = window.innerWidth;
-  H = window.innerHeight;
-  canvas.width = W;
-  canvas.height = H;
-  s = Math.min(W, H) / 800;
-  doge.x = W / 2;
-  doge.y = H - GROUND_H * s - 32 * s;
-  doge.r = 32 * s;
+  canvas.width = W();
+  canvas.height = H();
+  s = Math.min(W(), H()) / 800;
+  doge.x = W() / 2;
+  doge.y = H() - H() * GROUND_H_RATIO * 0.5 - 30 * s;
+  doge.r = 28 * s;
   doge.hurtTimer = 0;
+  doge.blinkTimer = 0;
+  initClouds();
+  initFlowers();
 }
 
-function dist(a, b) {
-  return Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2);
+function initClouds() {
+  clouds.length = 0;
+  for (let i = 0; i < 6; i++) {
+    clouds.push({
+      x: Math.random() * W(),
+      y: 30 + Math.random() * H() * 0.15,
+      w: (60 + Math.random() * 80) * s,
+      h: (20 + Math.random() * 30) * s,
+      speed: 0.15 + Math.random() * 0.2,
+      opacity: 0.3 + Math.random() * 0.3
+    });
+  }
 }
 
-function getDogeCenter() {
-  return { x: doge.x, y: doge.y - doge.r * 0.3 };
+function initFlowers() {
+  flowers.length = 0;
+  for (let i = 0; i < 8; i++) {
+    flowers.push({
+      x: W() * (0.05 + i * 0.12),
+      y: H() - H() * GROUND_H_RATIO,
+      color: ['#FF6B6B', '#FFD93D', '#6BCB77', '#4D96FF', '#FF69B4', '#FF9F43'][i % 6],
+      size: (3 + Math.random() * 3) * s
+    });
+  }
 }
 
 function spawnBee() {
   const side = Math.floor(Math.random() * 4);
   let x, y;
-  const margin = 50 * s;
+  const m = 40 * s;
   switch (side) {
-    case 0: x = Math.random() * W; y = -margin; break;
-    case 1: x = W + margin; y = Math.random() * H * 0.6; break;
-    case 2: x = Math.random() * W; y = -margin; break;
-    case 3: x = -margin; y = Math.random() * H * 0.6; break;
+    case 0: x = Math.random() * W(); y = -m; break;
+    case 1: x = W() + m; y = Math.random() * H() * 0.5; break;
+    case 2: x = Math.random() * W(); y = -m; break;
+    case 3: x = -m; y = Math.random() * H() * 0.5; break;
   }
   bees.push({
-    x, y, vx: 0, vy: 0, target: getDogeCenter(),
-    r: (15 + Math.random() * 4) * s,
-    speed: (1.2 + Math.random() * 1.5 + level * 0.08) * s,
+    x, y,
+    vx: 0, vy: 0,
+    target: { x: doge.x + (Math.random() - 0.5) * 40 * s, y: doge.y },
+    r: (14 + Math.random() * 3) * s,
+    speed: (1.0 + Math.random() * 1.5 + level * 0.06) * s,
     wobble: Math.random() * Math.PI * 2,
-    wobbleSpeed: 0.02 + Math.random() * 0.02,
-    stuck: 0, alive: true
+    wobbleSpeed: 0.015 + Math.random() * 0.02,
+    stuck: 0,
+    alive: true,
+    animPhase: Math.random() * Math.PI * 2
   });
 }
 
-function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 
-function findNearestSegment(x, y, maxDist) {
-  let nearest = -1, nearDist = maxDist;
+function findNearestSeg(px, py, maxD) {
+  let best = -1, bestD = maxD;
   for (let i = 0; i < lineSegments.length; i++) {
     const seg = lineSegments[i];
     if (seg.hp <= 0) continue;
     const dx = seg.x2 - seg.x1, dy = seg.y2 - seg.y1;
     const len = Math.sqrt(dx * dx + dy * dy);
     if (len < 0.1) continue;
-    const t = clamp(((x - seg.x1) * dx + (y - seg.y1) * dy) / (len * len), 0, 1);
-    const px = seg.x1 + t * dx, py = seg.y1 + t * dy;
-    const d = Math.sqrt((x - px) ** 2 + (y - py) ** 2);
-    if (d < nearDist) { nearDist = d; nearest = i; }
+    const t = clamp(((px - seg.x1) * dx + (py - seg.y1) * dy) / (len * len), 0, 1);
+    const nx = seg.x1 + t * dx, ny = seg.y1 + t * dy;
+    const d = Math.sqrt((px - nx) ** 2 + (py - ny) ** 2);
+    if (d < bestD) { bestD = d; best = i; }
   }
-  return nearest;
+  return best;
+}
+
+function addParticle(x, y, color, count) {
+  for (let i = 0; i < count; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = (1 + Math.random() * 3) * s;
+    particles.push({
+      x, y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - 1 * s,
+      life: 20 + Math.random() * 20,
+      maxLife: 40,
+      r: (2 + Math.random() * 3) * s,
+      color
+    });
+  }
 }
 
 function updateBees() {
-  const maxBees = Math.min(3 + Math.floor(level / 2), 12);
-  if (bees.length < maxBees && frameCount % Math.max(25, 60 - level * 2) === 0) spawnBee();
+  const maxBeelines = Math.min(2 + Math.floor(level * 0.8), 10);
+  if (bees.length < maxBeelines && frameCount % Math.max(28, 55 - level * 2) === 0) spawnBee();
 
   for (const bee of bees) {
     if (!bee.alive) continue;
     if (bee.stuck > 0) { bee.stuck--; continue; }
 
     bee.wobble += bee.wobbleSpeed;
+    bee.animPhase += 0.12;
     const wx = Math.sin(bee.wobble) * 1.5 * s;
-    const wy = Math.cos(bee.wobble * 0.7) * 1 * s;
+    const wy = Math.cos(bee.wobble * 0.7) * 0.8 * s;
     const dx = bee.target.x - bee.x + wx;
     const dy = bee.target.y - bee.y + wy;
     const d = Math.sqrt(dx * dx + dy * dy);
 
     if (d > 3 * s) {
-      bee.vx += (dx / d) * 0.15;
-      bee.vy += (dy / d) * 0.15;
+      bee.vx += (dx / d) * 0.14;
+      bee.vy += (dy / d) * 0.14;
       const spd = Math.sqrt(bee.vx * bee.vx + bee.vy * bee.vy);
-      const maxSpd = bee.speed;
-      if (spd > maxSpd) { bee.vx = (bee.vx / spd) * maxSpd; bee.vy = (bee.vy / spd) * maxSpd; }
+      if (spd > bee.speed) { bee.vx = (bee.vx / spd) * bee.speed; bee.vy = (bee.vy / spd) * bee.speed; }
       bee.x += bee.vx;
       bee.y += bee.vy;
     }
 
-    const segIdx = findNearestSegment(bee.x, bee.y, bee.r + 4 * s);
+    const segIdx = findNearestSeg(bee.x, bee.y, bee.r + 4 * s);
     if (segIdx >= 0) {
       const seg = lineSegments[segIdx];
       seg.hp--;
-      if (seg.hp <= 0) seg.hp = 0;
-      bee.stuck = 6;
-      bee.vx *= -0.3; bee.vy *= -0.3;
-      bee.x += bee.vx; bee.y += bee.vy;
+      if (seg.hp <= 0) { seg.hp = 0; addParticle((seg.x1 + seg.x2) / 2, (seg.y1 + seg.y2) / 2, '#FF6B6B', 4); }
+      if (bee.stuck <= 0) { bee.stuck = 5; bee.vx *= -0.25; bee.vy *= -0.25; bee.x += bee.vx * 2; bee.y += bee.vy * 2; }
     } else {
-      bee.target = getDogeCenter();
+      bee.target = { x: doge.x + (Math.random() - 0.5) * 50 * s, y: doge.y };
     }
 
-    const dx2 = bee.x - doge.x;
-    const dy2 = bee.y - (doge.y - doge.r * 0.2);
-    if (Math.sqrt(dx2 * dx2 + dy2 * dy2) < doge.r * 0.5 + bee.r) {
+    const dd = Math.sqrt((bee.x - doge.x) ** 2 + (bee.y - doge.y) ** 2);
+    if (dd < doge.r * 0.5 + bee.r) {
       bee.alive = false;
+      doge.hurtTimer = 25;
+      addParticle(bee.x, bee.y, '#FF6B6B', 8);
       lives--;
-      doge.hurtTimer = 30;
-      updateUI();
+      updateHUD();
       if (lives <= 0) { gameOver(); return; }
     }
   }
 
-  for (let i = bees.length - 1; i >= 0; i--) {
-    if (!bees[i].alive) bees.splice(i, 1);
+  bees = bees.filter(b => b.alive);
+}
+
+function updateParticles() {
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.x += p.vx;
+    p.y += p.vy;
+    p.vy += 0.05;
+    p.life--;
+    if (p.life <= 0) particles.splice(i, 1);
   }
 }
 
-function roundEnd(success) {
+function roundEnd() {
   roundActive = false;
   timerActive = false;
-  if (success) {
-    const totalHp = lineSegments.reduce((sum, seg) => sum + seg.hp, 0);
-    const maxHp = lineSegments.length * (8 + Math.floor(level / 2));
-    const lineHealth = maxHp > 0 ? totalHp / maxHp : 0;
-    let roundStars = 1;
-    if (lineHealth > 0.6 && inkUsed < 280) roundStars = 3;
-    else if (lineHealth > 0.3 && inkUsed < 520) roundStars = 2;
-    stars += roundStars;
-    score++;
-    if (lives < 3) lives++;
-    updateUI();
-    showMessage(`Level ${level} Clear!\n${'⭐'.repeat(roundStars)}${'☆'.repeat(3 - roundStars)}`);
-  }
-  setTimeout(() => {
-    if (gameState === 'playing') {
-      level++;
-      resetRound();
-    }
-  }, 2000);
+  state = STATE.WIN;
+  const totalHp = lineSegments.reduce((sum, seg) => sum + seg.hp, 0);
+  const maxHp = lineSegments.length * (6 + Math.floor(level / 2));
+  const health = maxHp > 0 ? totalHp / maxHp : 0;
+  roundStars = health > 0.65 && inkUsed < MAX_INK * 0.3 ? 3 : health > 0.35 && inkUsed < MAX_INK * 0.6 ? 2 : 1;
+  stars += roundStars;
+  score++;
+  if (lives < 3) lives++;
+  updateHUD();
+  showMessage(`Level ${level} Clear!\n${'⭐'.repeat(roundStars)}${'☆'.repeat(3 - roundStars)}`);
+  setTimeout(() => { if (state === STATE.WIN) { level++; resetRound(); state = STATE.DRAW; } }, 2200);
 }
 
 function gameOver() {
-  gameState = 'over';
+  state = STATE.GAMEOVER;
   timerActive = false;
   roundActive = false;
-  finalScore.textContent = `Level ${level} · ${score} Saved · ${stars}⭐`;
+  finalScore.textContent = `Level ${level}\n${score} Saved\n${stars} Stars`;
   finalScore.style.display = 'block';
-  showMessage('Game Over! 💔', true);
+  showMessage('Bees Got the Doge! 💔', true);
 }
 
 function resetRound() {
-  bees.length = 0;
-  lineSegments.length = 0;
-  lines.length = 0;
-  currentLine = null;
+  bees = [];
+  lineSegments = [];
+  drawnPoints = [];
+  particles.length = 0;
   inkUsed = 0;
-  drawing = false;
   lastDrawPoint = null;
-  phase = 'draw';
+  drawStartPos = null;
+  timeLeft = 10;
+  gameTimer = 0;
+  frameCount = 0;
   timerActive = false;
   roundActive = false;
-  gameTimer = 0;
-  timeLeft = 10;
-  frameCount = 0;
   timerEl.textContent = '10';
-  inkFill.style.width = '100%';
-  inkContainer.classList.add('show');
+  inkBarFill.style.width = '100%';
+  inkBarBg.style.display = 'block';
   drawHint.classList.remove('hidden');
   drawHint.textContent = '✏️ Draw a line to protect the doge!';
+  starsEl.textContent = '';
   levelEl.textContent = 'Level ' + level;
-  updateUI();
+  updateHUD();
   hideMessage();
   finalScore.style.display = 'none';
 }
 
 function startGame() {
-  gameState = 'playing';
-  level = 1; score = 0; lives = 3; stars = 0;
-  startScreen.style.display = 'none';
+  state = STATE.DRAW;
+  level = 1; score = 0; lives = 3; stars = 0; roundStars = 0;
+  startScreen.style.opacity = '0';
+  setTimeout(() => { startScreen.style.display = 'none'; }, 400);
   document.getElementById('hud').style.display = 'flex';
-  finalScore.style.display = 'none';
   resetRound();
 }
 
 function getPos(e) {
   const rect = canvas.getBoundingClientRect();
   let x, y;
-  if (e.touches) {
-    x = e.touches[0].clientX - rect.left;
-    y = e.touches[0].clientY - rect.top;
-  } else {
-    x = e.clientX - rect.left;
-    y = e.clientY - rect.top;
-  }
+  if (e.touches) { x = e.touches[0].clientX - rect.left; y = e.touches[0].clientY - rect.top; }
+  else { x = e.clientX - rect.left; y = e.clientY - rect.top; }
   return { x: x * (canvas.width / rect.width), y: y * (canvas.height / rect.height) };
 }
 
 function startDraw(pos) {
-  if (phase !== 'draw' || gameState !== 'playing' || drawing) return;
-  drawing = true;
-  currentLine = { points: [{ x: pos.x, y: pos.y }] };
+  if (state !== STATE.DRAW) return;
+  drawStartPos = { x: pos.x, y: pos.y };
   lastDrawPoint = pos;
+  drawnPoints = [{ x: pos.x, y: pos.y }];
 }
 
 function moveDraw(pos) {
-  if (!drawing || phase !== 'draw') return;
+  if (!drawnPoints.length || state !== STATE.DRAW) return;
   const dx = pos.x - lastDrawPoint.x;
   const dy = pos.y - lastDrawPoint.y;
-  if (Math.sqrt(dx * dx + dy * dy) > 3 * s) {
-    inkUsed += Math.sqrt(dx * dx + dy * dy);
-    const pct = Math.min(inkUsed / 800, 1);
-    inkFill.style.width = (1 - pct) * 100 + '%';
-    if (inkUsed >= 800) { endDraw(); return; }
-    currentLine.points.push({ x: pos.x, y: pos.y });
-    lastDrawPoint = pos;
-  }
+  const dd = Math.sqrt(dx * dx + dy * dy);
+  if (dd < 2 * s) return;
+  inkUsed += dd;
+  const pct = Math.min(inkUsed / MAX_INK, 1);
+  inkBarFill.style.width = ((1 - pct) * 100) + '%';
+  if (inkUsed >= MAX_INK) { endDraw(); return; }
+  drawnPoints.push({ x: pos.x, y: pos.y });
+  lastDrawPoint = pos;
 }
 
 function endDraw() {
-  if (!drawing) return;
-  drawing = false;
-  if (currentLine && currentLine.points.length > 5) {
-    for (let i = 0; i < currentLine.points.length - 1; i++) {
-      const p1 = currentLine.points[i];
-      const p2 = currentLine.points[i + 1];
-      lineSegments.push({
-        x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y,
-        hp: 8 + Math.floor(level / 2)
-      });
-    }
-    lines.push(currentLine);
-    drawHint.textContent = '🛡️ Hold on! Protect the doge!';
-    phase = 'protect';
-    roundActive = true;
-    timerActive = true;
+  if (drawnPoints.length < 5) { drawnPoints = []; return; }
+  for (let i = 0; i < drawnPoints.length - 1; i++) {
+    const p1 = drawnPoints[i], p2 = drawnPoints[i + 1];
+    lineSegments.push({ x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y, hp: 5 + Math.floor(level / 2) });
   }
-  currentLine = null;
+  state = STATE.PROTECT;
+  roundActive = true;
+  timerActive = true;
+  drawHint.classList.add('hidden');
+  inkBarBg.style.display = 'none';
+  drawHint.textContent = '🛡️ Hold on!';
 }
 
-canvas.addEventListener('mousedown', (e) => { startDraw(getPos(e)); });
-canvas.addEventListener('mousemove', (e) => { moveDraw(getPos(e)); });
-canvas.addEventListener('mouseup', () => { endDraw(); });
-canvas.addEventListener('mouseleave', () => { endDraw(); });
+// Touch/Mouse events
+canvas.addEventListener('mousedown', e => startDraw(getPos(e)));
+canvas.addEventListener('mousemove', e => moveDraw(getPos(e)));
+canvas.addEventListener('mouseup', endDraw);
+canvas.addEventListener('mouseleave', endDraw);
 
-canvas.addEventListener('touchstart', (e) => {
-  e.preventDefault();
-  const t = e.touches[0];
-  startDraw({ x: t.clientX, y: t.clientY });
-}, { passive: false });
-
-canvas.addEventListener('touchmove', (e) => {
-  e.preventDefault();
-  const t = e.touches[0];
-  moveDraw({ x: t.clientX, y: t.clientY });
-}, { passive: false });
-
-canvas.addEventListener('touchend', (e) => {
-  e.preventDefault();
-  endDraw();
-}, { passive: false });
+canvas.addEventListener('touchstart', e => { e.preventDefault(); startDraw(getPos(e)); }, { passive: false });
+canvas.addEventListener('touchmove', e => { e.preventDefault(); moveDraw(getPos(e)); }, { passive: false });
+canvas.addEventListener('touchend', e => { e.preventDefault(); endDraw(); }, { passive: false });
 
 startBtn.addEventListener('click', startGame);
 restartBtn.addEventListener('click', startGame);
 
-function updateUI() {
+function updateHUD() {
   let h = '';
   for (let i = 0; i < 3; i++) h += i < lives ? '❤️' : '🖤';
   livesEl.textContent = h;
   scoreEl.textContent = '🐝 ' + score;
   levelEl.textContent = 'Level ' + level;
+  starsEl.textContent = '⭐'.repeat(stars % 10);
 }
 
 function showMessage(text, isOver) {
@@ -339,315 +333,322 @@ function hideMessage() {
   restartBtn.style.display = 'none';
 }
 
-function roundRect(x, y, w, h, r) {
-  ctx.moveTo(x + r, y);
-  ctx.lineTo(x + w - r, y);
-  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-  ctx.lineTo(x + w, y + h - r);
-  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-  ctx.lineTo(x + r, y + h);
-  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-  ctx.lineTo(x, y + r);
-  ctx.quadraticCurveTo(x, y, x + r, y);
-}
+// ======== DRAWING ========
 
 function drawDoge() {
   const x = doge.x, y = doge.y, r = doge.r;
-  if (doge.hurtTimer > 0) doge.hurtTimer--;
   const hurt = doge.hurtTimer > 0;
+  if (doge.hurtTimer > 0) doge.hurtTimer--;
+  doge.blinkTimer++;
+  const blink = doge.blinkTimer % 120 < 3;
+  const wag = Math.sin(frameCount * 0.1) * 5 * s;
 
   ctx.save();
   ctx.translate(x, y);
-  const earFlap = Math.sin(frameCount * 0.08) * 1.5 * s;
 
+  // Tail
   ctx.save();
-  ctx.translate(-r * 0.5, -r * 0.65);
-  ctx.fillStyle = COLORS.dogeDark;
+  ctx.translate(r * 0.5, -r * 0.7);
+  ctx.rotate(Math.sin(frameCount * 0.08) * 0.3);
+  ctx.fillStyle = hurt ? '#FF6B6B' : '#D4A574';
   ctx.beginPath();
-  roundRect(-r * 0.22, -r * 0.45, r * 0.44, r * 0.5 + earFlap, r * 0.1);
-  ctx.fill();
-  ctx.fillStyle = '#F5CBBE';
-  ctx.beginPath();
-  roundRect(-r * 0.14, -r * 0.35, r * 0.28, r * 0.35 + earFlap * 0.5, r * 0.08);
+  ctx.ellipse(0, -r * 0.4, r * 0.35, r * 0.12, 0.3, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 
-  ctx.save();
-  ctx.translate(r * 0.5, -r * 0.65);
-  ctx.fillStyle = COLORS.dogeDark;
+  // Body
+  ctx.fillStyle = hurt ? '#FF6B6B' : '#D4A574';
+  ctx.shadowColor = 'rgba(139,92,246,0.12)';
+  ctx.shadowBlur = 10 * s;
   ctx.beginPath();
-  roundRect(-r * 0.22, -r * 0.45, r * 0.44, r * 0.5 + earFlap, r * 0.1);
-  ctx.fill();
-  ctx.fillStyle = '#F5CBBE';
-  ctx.beginPath();
-  roundRect(-r * 0.14, -r * 0.35, r * 0.28, r * 0.35 + earFlap * 0.5, r * 0.08);
-  ctx.fill();
-  ctx.restore();
-
-  const bodyColor = hurt ? '#FF6B6B' : COLORS.dogeBody;
-  ctx.fillStyle = bodyColor;
-  ctx.shadowColor = 'rgba(139,92,246,0.15)';
-  ctx.shadowBlur = 12 * s;
-  ctx.beginPath();
-  ctx.ellipse(0, r * 0.1, r * 0.85, r * 0.75, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, r * 0.05, r * 0.8, r * 0.72, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.shadowBlur = 0;
 
-  ctx.fillStyle = COLORS.dogeBelly;
+  // Belly
+  ctx.fillStyle = '#FDEBD0';
   ctx.beginPath();
-  ctx.ellipse(0, r * 0.35, r * 0.5, r * 0.35, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, r * 0.3, r * 0.55, r * 0.42, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  ctx.fillStyle = COLORS.dogeDark;
-  ctx.beginPath();
-  ctx.ellipse(-r * 0.25, -r * 0.1, r * 0.3, r * 0.28, -0.1, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.ellipse(r * 0.25, -r * 0.1, r * 0.3, r * 0.28, 0.1, 0, Math.PI * 2);
-  ctx.fill();
+  // Ears
+  ctx.save();
+  ctx.translate(-r * 0.28, -r * 0.72);
+  ctx.rotate(-0.15);
+  ctx.fillStyle = hurt ? '#FF6B6B' : '#D4A574';
+  ctx.beginPath(); ctx.ellipse(0, 0, r * 0.22, r * 0.38, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#F5CBBE';
+  ctx.beginPath(); ctx.ellipse(0, 0, r * 0.14, r * 0.24, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
 
-  ctx.fillStyle = COLORS.dogeNose;
-  ctx.beginPath();
-  ctx.arc(-r * 0.16, -r * 0.15, r * 0.06, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.arc(r * 0.16, -r * 0.15, r * 0.06, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = 'white';
-  ctx.beginPath();
-  ctx.arc(-r * 0.13, -r * 0.18, r * 0.025, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.arc(r * 0.19, -r * 0.18, r * 0.025, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.save();
+  ctx.translate(r * 0.28, -r * 0.72);
+  ctx.rotate(0.15);
+  ctx.fillStyle = hurt ? '#FF6B6B' : '#D4A574';
+  ctx.beginPath(); ctx.ellipse(0, 0, r * 0.22, r * 0.38, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#F5CBBE';
+  ctx.beginPath(); ctx.ellipse(0, 0, r * 0.14, r * 0.24, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
 
-  ctx.fillStyle = COLORS.dogeNose;
-  ctx.beginPath();
-  ctx.arc(0, r * 0.08, r * 0.12, 0, Math.PI);
-  ctx.fill();
+  // Eyes
+  if (!blink) {
+    ctx.fillStyle = '#2D3436';
+    ctx.beginPath(); ctx.arc(-r * 0.17, -r * 0.15, r * 0.07, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(r * 0.17, -r * 0.15, r * 0.07, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'white';
+    ctx.beginPath(); ctx.arc(-r * 0.14, -r * 0.18, r * 0.025, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(r * 0.2, -r * 0.18, r * 0.025, 0, Math.PI * 2); ctx.fill();
+  } else {
+    ctx.strokeStyle = '#2D3436';
+    ctx.lineWidth = 2 * s;
+    ctx.beginPath(); ctx.moveTo(-r * 0.24, -r * 0.15); ctx.lineTo(-r * 0.1, -r * 0.15); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(r * 0.1, -r * 0.15); ctx.lineTo(r * 0.24, -r * 0.15); ctx.stroke();
+  }
 
+  // Nose
+  ctx.fillStyle = '#333';
+  ctx.beginPath(); ctx.ellipse(0, r * 0.0, r * 0.05, r * 0.04, 0, 0, Math.PI * 2); ctx.fill();
+
+  // Mouth
+  ctx.strokeStyle = '#555';
+  ctx.lineWidth = 1.5 * s;
+  ctx.beginPath(); ctx.moveTo(0, r * 0.06); ctx.lineTo(-r * 0.08, r * 0.14); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0, r * 0.06); ctx.lineTo(r * 0.08, r * 0.14); ctx.stroke();
+
+  // Tongue
   const tw = Math.sin(frameCount * 0.12) * 1.5 * s;
-  ctx.fillStyle = '#FF6B6B';
-  ctx.beginPath();
-  ctx.ellipse(0 + tw, r * 0.18, r * 0.04, r * 0.12, 0, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.fillStyle = '#FF8A8A';
+  ctx.beginPath(); ctx.ellipse(tw, r * 0.17, r * 0.03, r * 0.09, 0, 0, Math.PI); ctx.fill();
+
+  // Paws
+  ctx.fillStyle = hurt ? '#FF6B6B' : '#B8895C';
+  ctx.beginPath(); ctx.ellipse(-r * 0.35, r * 0.55, r * 0.1, r * 0.06, -0.2, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(r * 0.35, r * 0.55, r * 0.1, r * 0.06, 0.2, 0, Math.PI * 2); ctx.fill();
 
   ctx.restore();
 }
 
 function drawBee(bee) {
-  if (!bee.alive) return;
   const x = bee.x, y = bee.y, r = bee.r;
-  const buzz = Math.sin(frameCount * 0.3 + bee.wobble) * 1.5 * s;
+  const buzz = Math.sin(bee.animPhase) * 1.5 * s;
 
   ctx.save();
   ctx.translate(x, y + buzz);
 
-  ctx.fillStyle = COLORS.beeBody;
-  ctx.shadowColor = 'rgba(0,0,0,0.1)';
-  ctx.shadowBlur = 6 * s;
-  ctx.beginPath();
-  ctx.ellipse(0, 0, r, r * 0.7, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.shadowBlur = 0;
+  // Body shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.08)';
+  ctx.beginPath(); ctx.ellipse(2 * s, 2 * s, r, r * 0.7, 0, 0, Math.PI * 2); ctx.fill();
 
-  ctx.fillStyle = COLORS.beeStripe;
-  ctx.beginPath();
-  ctx.ellipse(-r * 0.28, 0, r * 0.2, r * 0.45, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.ellipse(r * 0.28, 0, r * 0.2, r * 0.45, 0, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.fillStyle = '#333';
+  ctx.beginPath(); ctx.ellipse(0, 0, r, r * 0.68, 0, 0, Math.PI * 2); ctx.fill();
 
-  const w = Math.sin(frameCount * 0.4 + bee.wobble) * 0.25 + 0.5;
-  ctx.fillStyle = COLORS.beeWing;
-  ctx.beginPath();
-  ctx.ellipse(-r * 0.9, -r * 0.3, r * 0.55, r * 0.15 * w, -0.3, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.ellipse(r * 0.9, -r * 0.3, r * 0.55, r * 0.15 * w, 0.3, 0, Math.PI * 2);
-  ctx.fill();
+  // Stripes
+  ctx.fillStyle = '#FFD700';
+  ctx.beginPath(); ctx.ellipse(-r * 0.28, 0, r * 0.18, r * 0.42, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(r * 0.28, 0, r * 0.18, r * 0.42, 0, 0, Math.PI * 2); ctx.fill();
 
-  ctx.fillStyle = COLORS.beeEye;
-  ctx.beginPath();
-  ctx.arc(-r * 0.45, -r * 0.12, r * 0.05, 0, Math.PI * 2);
-  ctx.fill();
+  // Wings
+  const wf = Math.sin(bee.animPhase * 2.5) * 0.3 + 0.5;
+  ctx.fillStyle = 'rgba(200,225,255,0.45)';
+  ctx.beginPath(); ctx.ellipse(-r * 0.95, -r * 0.3, r * 0.55, r * 0.14 * wf, -0.25, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(r * 0.95, -r * 0.3, r * 0.55, r * 0.14 * wf, 0.25, 0, Math.PI * 2); ctx.fill();
+
+  // Eye
+  ctx.fillStyle = '#FF3333';
+  ctx.beginPath(); ctx.arc(-r * 0.4, -r * 0.1, r * 0.06, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = 'white';
-  ctx.beginPath();
-  ctx.arc(-r * 0.46, -r * 0.13, r * 0.02, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.beginPath(); ctx.arc(-r * 0.41, -r * 0.115, r * 0.02, 0, Math.PI * 2); ctx.fill();
 
-  ctx.strokeStyle = '#222';
-  ctx.lineWidth = 1 * s;
-  ctx.beginPath();
-  ctx.moveTo(r * 0.5, -r * 0.1);
-  ctx.lineTo(r * 0.8, -r * 0.25);
-  ctx.stroke();
+  // Stinger
+  ctx.fillStyle = '#222';
+  ctx.beginPath(); ctx.moveTo(r * 0.6, -r * 0.05); ctx.lineTo(r * 0.95, -r * 0.18); ctx.lineTo(r * 0.95, -r * 0.02); ctx.closePath(); ctx.fill();
 
   ctx.restore();
 }
 
-function drawDrawnLines() {
-  for (const l of lines) {
-    if (l.points.length < 2) continue;
-    ctx.beginPath();
-    ctx.moveTo(l.points[0].x, l.points[0].y);
-    for (let i = 1; i < l.points.length; i++) {
-      ctx.lineTo(l.points[i].x, l.points[i].y);
-    }
-    ctx.strokeStyle = COLORS.line;
-    ctx.lineWidth = 10 * s;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.shadowColor = 'rgba(139,92,246,0.3)';
-    ctx.shadowBlur = 6 * s;
-    ctx.stroke();
-    ctx.shadowBlur = 0;
-  }
-}
+function drawDrawnLine() {
+  if (drawnPoints.length < 2) return;
 
-function drawCurrentLine() {
-  if (!currentLine || currentLine.points.length < 2) return;
-  ctx.beginPath();
-  ctx.moveTo(currentLine.points[0].x, currentLine.points[0].y);
-  for (let i = 1; i < currentLine.points.length; i++) {
-    ctx.lineTo(currentLine.points[i].x, currentLine.points[i].y);
-  }
-  ctx.strokeStyle = COLORS.line;
-  ctx.lineWidth = 10 * s;
+  ctx.save();
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
-  ctx.shadowColor = 'rgba(139,92,246,0.3)';
+  ctx.strokeStyle = '#7C3AED';
+  ctx.lineWidth = 9 * s;
+  ctx.shadowColor = 'rgba(139,92,246,0.4)';
   ctx.shadowBlur = 6 * s;
+  ctx.beginPath();
+  ctx.moveTo(drawnPoints[0].x, drawnPoints[0].y);
+  for (let i = 1; i < drawnPoints.length; i++) {
+    ctx.lineTo(drawnPoints[i].x, drawnPoints[i].y);
+  }
   ctx.stroke();
   ctx.shadowBlur = 0;
+  ctx.restore();
 }
 
-function drawDamage() {
+function drawLineSegments() {
   for (const seg of lineSegments) {
     if (seg.hp <= 0) continue;
-    const maxHp = 8 + Math.floor(level / 2);
+    const maxHp = 6 + Math.floor(level / 2);
     const pct = seg.hp / maxHp;
-    if (pct < 0.5) {
-      const mx = (seg.x1 + seg.x2) / 2;
-      const my = (seg.y1 + seg.y2) / 2;
-      ctx.fillStyle = `rgba(255, 50, 50, ${(0.5 - pct) * 0.5})`;
-      ctx.beginPath();
-      ctx.arc(mx, my, 5 * s, 0, Math.PI * 2);
-      ctx.fill();
-    }
+    const alpha = 0.4 + pct * 0.6;
+
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = '#7C3AED';
+    ctx.lineWidth = (8 + pct * 3) * s;
+    ctx.shadowColor = 'rgba(139,92,246,0.3)';
+    ctx.shadowBlur = 4 * s;
+    ctx.beginPath();
+    ctx.moveTo(seg.x1, seg.y1);
+    ctx.lineTo(seg.x2, seg.y2);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.restore();
+  }
+}
+
+function drawParticles() {
+  for (const p of particles) {
+    const alpha = p.life / p.maxLife;
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = p.color;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r * alpha, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawSky() {
+  const grad = ctx.createLinearGradient(0, 0, 0, H() * 0.7);
+  grad.addColorStop(0, '#E0F7FA');
+  grad.addColorStop(0.4, '#B3E5FC');
+  grad.addColorStop(0.7, '#81D4FA');
+  grad.addColorStop(1, '#B3E5FC');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W(), H());
+}
+
+function drawClouds() {
+  for (const c of clouds) {
+    c.x += c.speed;
+    if (c.x > W() + c.w) c.x = -c.w;
+    ctx.fillStyle = `rgba(255,255,255,${c.opacity})`;
+    ctx.beginPath();
+    ctx.ellipse(c.x, c.y, c.w, c.h, 0, 0, Math.PI * 2);
+    ctx.ellipse(c.x + c.w * 0.6, c.y - c.h * 0.2, c.w * 0.5, c.h * 0.7, 0, 0, Math.PI * 2);
+    ctx.ellipse(c.x + c.w * 1.1, c.y, c.w * 0.5, c.h * 0.85, 0, 0, Math.PI * 2);
+    ctx.fill();
   }
 }
 
 function drawGround() {
-  const gh = GROUND_H * s;
+  const gh = H() * GROUND_H_RATIO;
+  const grad = ctx.createLinearGradient(0, H() - gh, 0, H());
+  grad.addColorStop(0, '#66BB6A');
+  grad.addColorStop(0.35, '#4CAF50');
+  grad.addColorStop(1, '#2E7D32');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, H() - gh, W(), gh);
 
-  ctx.fillStyle = COLORS.ground1;
-  ctx.shadowColor = 'rgba(139,92,246,0.1)';
+  ctx.fillStyle = '#A5D6A7';
+  ctx.fillRect(0, H() - gh - 1 * s, W(), 2 * s);
+
+  for (const f of flowers) {
+    ctx.fillStyle = '#2E7D32';
+    ctx.fillRect(f.x - s, f.y - 3 * s, 2 * s, 3 * s);
+    ctx.fillStyle = f.color;
+    ctx.beginPath(); ctx.arc(f.x, f.y - 4 * s, f.size, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#FFD93D';
+    ctx.beginPath(); ctx.arc(f.x, f.y - 4 * s, f.size * 0.4, 0, Math.PI * 2); ctx.fill();
+  }
+}
+
+function drawHive() {
+  const hx = W() * 0.82;
+  const hy = H() * 0.06;
+  const hs = 22 * s;
+
+  ctx.fillStyle = '#D4A017';
+  for (let row = 0; row < 3; row++) {
+    for (let col = 0; col < 3 - row; col++) {
+      const ox = (row % 2) * hs * 0.45;
+      ctx.beginPath();
+      ctx.ellipse(hx + col * hs + ox - hs, hy + row * hs * 0.75, hs * 0.45, hs * 0.3, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  ctx.strokeStyle = '#B8860B';
+  ctx.lineWidth = 1.5 * s;
+  for (let row = 0; row < 3; row++) {
+    for (let col = 0; col < 3 - row; col++) {
+      const ox = (row % 2) * hs * 0.45;
+      ctx.beginPath();
+      ctx.ellipse(hx + col * hs + ox - hs, hy + row * hs * 0.75, hs * 0.45, hs * 0.3, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  }
+  ctx.fillStyle = '#FFD54F';
+  ctx.font = `${16 * s}px Arial`;
+  ctx.textAlign = 'center';
+  ctx.fillText('🐝', hx - hs * 0.3, hy + hs * 0.35);
+}
+
+function drawSun() {
+  const sx = W() * 0.12;
+  const sy = H() * 0.08;
+  const sr = 18 * s;
+  ctx.fillStyle = '#FFE082';
+  ctx.shadowColor = 'rgba(255,224,130,0.4)';
   ctx.shadowBlur = 20 * s;
-  ctx.fillRect(0, H - gh, W, gh);
+  ctx.beginPath(); ctx.arc(sx, sy, sr, 0, Math.PI * 2); ctx.fill();
   ctx.shadowBlur = 0;
-
-  const grad = ctx.createLinearGradient(0, H - gh, 0, H);
-  grad.addColorStop(0, '#A78BFA');
-  grad.addColorStop(0.3, '#8B5CF6');
-  grad.addColorStop(1, '#7C3AED');
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, H - gh, W, gh);
-
-  ctx.fillStyle = 'rgba(255,255,255,0.15)';
-  for (let i = 0; i < W; i += 30 * s) {
-    const gx = i + Math.sin(i * 0.05 + frameCount * 0.002) * 2 * s;
-    ctx.beginPath();
-    roundRect(gx, H - gh + 2 * s, 8 * s, 4 * s, 2 * s);
-    ctx.fill();
-  }
-
-  ctx.strokeStyle = '#7C3AED';
-  ctx.lineWidth = 3 * s;
-  ctx.beginPath();
-  ctx.moveTo(0, H - gh);
-  ctx.lineTo(W, H - gh);
-  ctx.stroke();
-}
-
-function drawSky() {
-  const grad = ctx.createLinearGradient(0, 0, 0, H);
-  grad.addColorStop(0, COLORS.sky1);
-  grad.addColorStop(0.5, COLORS.sky2);
-  grad.addColorStop(1, COLORS.sky3);
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, W, H);
-}
-
-function drawClouds() {
-  ctx.fillStyle = 'rgba(255,255,255,0.4)';
-  const cs = [
-    { x: (frameCount * 0.1) % (W + 200) - 100, y: 55 * s, sx: 1, sy: 1 },
-    { x: (frameCount * 0.07 + 300) % (W + 200) - 100, y: 90 * s, sx: 0.7, sy: 0.6 },
-    { x: (frameCount * 0.09 + 600) % (W + 200) - 100, y: 30 * s, sx: 1.2, sy: 0.9 },
-  ];
-  for (const c of cs) {
-    const r = 30 * s * c.sx;
-    const ry = 16 * s * c.sy;
-    ctx.beginPath();
-    ctx.ellipse(c.x, c.y, r, ry, 0, 0, Math.PI * 2);
-    ctx.ellipse(c.x + r * 0.6, c.y - ry * 0.2, r * 0.5, ry * 0.8, 0, 0, Math.PI * 2);
-    ctx.ellipse(c.x + r, c.y, r * 0.6, ry * 0.9, 0, 0, Math.PI * 2);
-    ctx.fill();
-  }
-}
-
-function drawSparkles() {
-  ctx.fillStyle = 'rgba(245,158,11,0.5)';
-  const positions = [
-    { x: W * 0.15, y: H * 0.2, phase: 0 },
-    { x: W * 0.85, y: H * 0.15, phase: 1.7 },
-    { x: W * 0.7, y: H * 0.35, phase: 3.1 },
-  ];
-  for (const p of positions) {
-    const size = (Math.sin(frameCount * 0.04 + p.phase) * 0.5 + 0.5) * 5 * s;
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, size, 0, Math.PI * 2);
-    ctx.fill();
-  }
-}
-
-function draw() {
-  drawSky();
-  drawClouds();
-  drawSparkles();
-  drawDrawnLines();
-  if (phase === 'draw') drawCurrentLine();
-  drawDamage();
-  for (const bee of bees) drawBee(bee);
-  drawGround();
-  drawDoge();
+  ctx.fillStyle = '#FFF9C4';
+  ctx.beginPath(); ctx.arc(sx, sy, sr * 0.6, 0, Math.PI * 2); ctx.fill();
 }
 
 function update() {
-  if (gameState === 'playing' && phase === 'protect' && roundActive) {
+  if (state === STATE.PROTECT && roundActive) {
     updateBees();
+    updateParticles();
     if (timerActive) {
       gameTimer++;
       if (gameTimer % 60 === 0) {
         timeLeft--;
         timerEl.textContent = timeLeft;
-        if (timeLeft <= 0) roundEnd(true);
+        if (timeLeft <= 0) { roundEnd(); return; }
       }
     }
-    const anyAlive = lineSegments.some(s => s.hp > 0);
-    if (!anyAlive && lineSegments.length > 0 && roundActive) {
-      const danger = bees.some(b => b.alive && dist(b, { x: doge.x, y: doge.y - doge.r * 0.2 }) < doge.r * 1.5);
-      if (danger) {
+    const hasDmg = lineSegments.some(s => s.hp <= 0);
+    const aliveSegs = lineSegments.filter(s => s.hp > 0).length;
+    if (aliveSegs === 0 && lineSegments.length > 0 && roundActive) {
+      const nearBee = bees.some(b => Math.sqrt((b.x - doge.x) ** 2 + (b.y - doge.y) ** 2) < doge.r * 1.8);
+      if (nearBee) {
         lives--;
-        doge.hurtTimer = 30;
-        updateUI();
+        doge.hurtTimer = 20;
+        updateHUD();
         if (lives <= 0) gameOver();
       }
     }
   }
   frameCount++;
+}
+
+
+function draw() {
+  drawSky();
+  drawSun();
+  drawClouds();
+  drawGround();
+  drawHive();
+  drawLineSegments();
+  drawDrawnLine();
+  drawParticles();
+  for (const bee of bees) drawBee(bee);
+  drawDoge();
 }
 
 function loop() {
@@ -656,6 +657,6 @@ function loop() {
   requestAnimationFrame(loop);
 }
 
-resize();
 window.addEventListener('resize', resize);
+resize();
 loop();
